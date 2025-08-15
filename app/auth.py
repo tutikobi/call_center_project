@@ -9,7 +9,7 @@ bp = Blueprint('auth', __name__)
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        # Se já estiver logado, redireciona para o dashboard correto
+        # Se um utilizador já logado aceder à página /login, redireciona-o para o dashboard correto
         if current_user.role == 'super_admin':
             return redirect(url_for('admin.dashboard'))
         return redirect(url_for('routes.dashboard'))
@@ -23,10 +23,11 @@ def login():
             flash('Credenciais inválidas. Por favor, tente novamente.')
             return redirect(url_for('auth.login'))
         
-        login_user(user)
+        # O parâmetro 'remember=True' é uma boa prática
+        login_user(user, remember=True)
         
-        # --- LÓGICA DE REDIRECIONAMENTO CENTRALIZADA AQUI ---
-        # Após o login, decide para onde enviar o utilizador
+        # --- LÓGICA DE REDIRECIONAMENTO DEFINITIVA ---
+        # Determina para onde ir com base no 'role' do utilizador
         if user.role == 'super_admin':
             return redirect(url_for('admin.dashboard'))
         else:
@@ -38,4 +39,5 @@ def login():
 @login_required
 def logout():
     logout_user()
+    flash('Você saiu da sua conta.', 'success')
     return redirect(url_for('auth.login'))

@@ -9,15 +9,26 @@ import random
 
 bp = Blueprint('routes', __name__)
 
+# call_center_project/app/routes.py
+
+# ... (importações no topo) ...
+
+bp = Blueprint('routes', __name__)
+
+# --- FUNÇÃO 'index' ATUALIZADA ---
 @bp.route("/")
 @login_required
 def index():
-    # Simplificado: o login já redireciona para o sítio certo.
-    # Esta rota agora só serve de fallback se alguém a aceder diretamente.
+    """
+    Ponto de entrada para utilizadores logados.
+    Redireciona para o dashboard correto com base no 'role'.
+    O decorator @login_required garante que apenas utilizadores autenticados chegam aqui.
+    """
     if current_user.role == 'super_admin':
         return redirect(url_for('admin.dashboard'))
     return redirect(url_for("routes.dashboard"))
 
+# ... (O resto do ficheiro 'routes.py' continua daqui para baixo sem alterações) ...
 @bp.route("/dashboard")
 @login_required
 def dashboard():
