@@ -12,15 +12,19 @@ class Empresa(db.Model):
     telefone_contato = db.Column(db.String(20))
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
     status_assinatura = db.Column(db.String(20), default='ativa')
+    
+    # --- NOVA LINHA ADICIONADA AQUI ---
+    status_pagamento = db.Column(db.String(20), nullable=False, default='em_dia') # Opções: 'em_dia', 'inadimplente'
+    
     whatsapp_token = db.Column(db.String(255))
     whatsapp_url = db.Column(db.String(255))
     webhook_verify_token = db.Column(db.String(255))
     usuarios = db.relationship('Usuario', backref='empresa', lazy=True, cascade="all, delete-orphan")
     avaliacoes = db.relationship('Avaliacao', backref='empresa', lazy=True, cascade="all, delete-orphan")
     conversas = db.relationship('ConversaWhatsApp', backref='empresa', lazy=True, cascade="all, delete-orphan")
-    # Novo relacionamento com tickets
     tickets_suporte = db.relationship('TicketSuporte', backref='empresa', lazy=True, cascade="all, delete-orphan")
 
+# ... (o resto do arquivo models.py permanece o mesmo) ...
 class Usuario(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
@@ -30,7 +34,6 @@ class Usuario(db.Model, UserMixin):
     status = db.Column(db.String(20), nullable=False, default='ativo')
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
     avaliacoes = db.relationship('Avaliacao', backref='agente', lazy=True)
-    # Novo relacionamento com tickets
     tickets_enviados = db.relationship('TicketSuporte', backref='remetente', lazy=True)
 
     def set_password(self, password):
@@ -68,7 +71,6 @@ class MensagemWhatsApp(db.Model):
     lida = db.Column(db.Boolean, default=False)
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
 
-# --- NOVO MODELO ADICIONADO AQUI ---
 class TicketSuporte(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     assunto = db.Column(db.String(200), nullable=False)
@@ -76,7 +78,5 @@ class TicketSuporte(db.Model):
     prioridade = db.Column(db.String(20), nullable=False, default='baixa') # baixa, media, alta
     status = db.Column(db.String(20), nullable=False, default='aberto') # aberto, em_andamento, fechado
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Chaves estrangeiras para saber quem enviou
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)

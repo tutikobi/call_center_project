@@ -1,140 +1,157 @@
 /* call_center_project/app/static/css/style.css */
 
+/* --- Variáveis de Cor --- */
+:root {
+    --primary-color: #4A90E2; /* Azul mais vibrante */
+    --sidebar-bg: #2c3e50;    /* Azul escuro */
+    --sidebar-hover: #34495e;  /* Tom mais claro para hover */
+    --sidebar-text: #ecf0f1;   /* Texto claro */
+    --body-bg: #f4f7f6;        /* Fundo principal mais suave */
+    --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
 /* Estilo geral do corpo da página */
 body {
-    background-color: #f8f9fa;
+    background-color: var(--body-bg);
     display: flex;
     min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 /* --- Barra Lateral (Sidebar) --- */
 .sidebar {
     width: 250px;
-    background-color: #343a40; /* Cor escura para a barra lateral */
-    color: white;
+    background-color: var(--sidebar-bg);
+    color: var(--sidebar-text);
     position: fixed;
     top: 0;
     left: 0;
     height: 100%;
-    padding-top: 56px; /* Altura da navbar superior */
+    padding-top: 1rem;
     z-index: 100;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-title {
+    padding: 1rem;
+    text-align: center;
+    font-weight: bold;
+    color: white;
+    background-color: rgba(255, 255, 255, 0.05);
+    margin: 0 1rem 1rem 1rem;
+    border-radius: 8px;
 }
 
 .sidebar .nav-link {
-    color: #adb5bd;
-    padding: 1rem;
+    color: #bdc3c7;
+    padding: 0.9rem 1.5rem;
     display: flex;
     align-items: center;
+    transition: all 0.2s ease-in-out;
+    border-left: 3px solid transparent;
 }
 
 .sidebar .nav-link .fa-fw {
     width: 1.25em;
+    margin-right: 12px !important;
 }
 
 .sidebar .nav-link:hover {
-    background-color: #495057;
+    background-color: var(--sidebar-hover);
     color: white;
+    border-left: 3px solid var(--primary-color);
 }
 
 .sidebar .nav-link.active {
-    background-color: #0d6efd; /* Cor de destaque para o item ativo */
+    background-color: var(--primary-color);
     color: white;
     font-weight: bold;
+    border-left: 3px solid #fff;
+}
+
+.sidebar-divider {
+    margin: 1rem 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-footer {
+    margin-top: auto; /* Empurra o footer para o final */
 }
 
 /* --- Conteúdo Principal --- */
 .content {
-    margin-left: 250px; /* Mesmo valor da largura da sidebar */
-    padding: 2rem;
-    padding-top: 76px; /* Espaço para a navbar superior */
+    margin-left: 250px;
+    padding: 2.5rem;
     width: calc(100% - 250px);
 }
 
-/* --- Cards de Métricas (Dashboard) - CÓDIGO CORRIGIDO E MELHORADO --- */
+/* --- Cards --- */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+}
+
+.card-header {
+    background-color: #fff;
+    border-bottom: 1px solid #e9ecef;
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+}
+
+/* --- Cards de Métricas (Dashboard) --- */
 .metric-card {
     background-color: white;
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 20px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    display: flex; /* ATIVA O FLEXBOX */
-    align-items: center; /* ALINHA OS ITENS VERTICALMENTE AO CENTRO */
-    gap: 15px; /* CRIA UM ESPAÇO ENTRE O ÍCONE E O TEXTO */
+    box-shadow: var(--card-shadow);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
 .metric-icon {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%; /* Deixa o fundo do ícone redondo */
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 22px;
-    flex-shrink: 0; /* Impede que o ícone seja esmagado */
+    font-size: 26px;
+    flex-shrink: 0;
 }
 
 .metric-content {
     display: flex;
-    flex-direction: column; /* Coloca o valor e o rótulo um sobre o outro */
+    flex-direction: column;
 }
 
 .metric-value {
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 700;
     line-height: 1.2;
+    color: #343a40;
 }
 
 .metric-label {
-    font-size: 14px;
+    font-size: 15px;
     color: #6c757d;
 }
 
 /* Cores de fundo para os ícones */
-.bg-info { background-color: #17a2b8 !important; }
-.bg-success { background-color: #28a745 !important; }
-.bg-warning { background-color: #ffc107 !important; }
-.bg-danger { background-color: #dc3545 !important; }
+.bg-info { background-color: #3498db !important; }
+.bg-success { background-color: #2ecc71 !important; }
+.bg-warning { background-color: #f1c40f !important; }
+.bg-danger { background-color: #e74c3c !important; }
+.bg-primary { background-color: #4A90E2 !important; }
 
-
-/* --- Outros Estilos (Gráficos, Agentes, etc.) --- */
-.chart-card {
-    background-color: white;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    height: 100%;
-}
-
-.agent-card {
-    display: flex;
-    align-items: center;
-    background-color: white;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
-
-.agent-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background-color: #28a745;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    margin-right: 15px;
-}
-
-.agent-name {
-    font-weight: 600;
-}
-
-.agent-status {
-    font-size: 0.85rem;
-}
 
 /* Estilo para o Botão Flutuante de Suporte (FAB) */
 #support-fab {
@@ -143,5 +160,57 @@ body {
     right: 30px;
     width: 60px;
     height: 60px;
-    z-index: 1050; /* Para ficar acima de outros elementos */
+    z-index: 1050;
+    background-color: var(--primary-color);
+    border: none;
+    transition: background-color 0.2s ease;
+}
+#support-fab:hover {
+    background-color: #3a7ac8;
+}
+/* --- Estilos para os Cards dos Agentes --- */
+.agent-card {
+    display: flex;
+    align-items: center;
+    background-color: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.agent-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.agent-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background-color: #28a745;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-right: 15px;
+    flex-shrink: 0;
+}
+
+.agent-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.agent-name {
+    font-weight: 600;
+    color: #343a40;
+}
+
+.agent-status {
+    font-size: 0.85rem;
+    color: #6c757d;
 }

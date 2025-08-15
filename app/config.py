@@ -1,6 +1,20 @@
 # call_center_project/app/config.py
 
 import os
+# call_center_project/app/config.py
+
+import os
+
+class Config:
+    # ... (suas configurações existentes como SECRET_KEY, etc.) ...
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'chave_secreta_padrao_para_desenvolvimento')
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///avaliacoes_whatsapp.db')
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # Adicione esta linha para facilitar a troca para o modo de teste
+    TESTING = False
+
+# ... (outras classes de configuração se houver) ...
 
 class Config:
     """Configurações base da aplicação."""

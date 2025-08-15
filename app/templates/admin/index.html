@@ -12,70 +12,65 @@
 
 <div class="card">
     <div class="card-header">
-        Empresas Cadastradas
+        Visão Geral das Empresas
     </div>
     <div class="card-body">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Nome da Empresa</th>
+                        <th>CNPJ</th>
+                        <th>Email do Admin</th>
                         <th>Status</th>
-                        <th>Data de Criação</th>
+                        <th>Pagamento</th>
                         <th class="text-end">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for empresa in empresas %}
                     <tr>
-                        <td>{{ empresa.id }}</td>
                         <td>{{ empresa.nome_empresa }}</td>
+                        <td>{{ empresa.cnpj }}</td>
+                        <td>
+                            {% for user in empresa.usuarios %}
+                                {% if user.role == 'admin_empresa' %}
+                                    {{ user.email }}
+                                {% endif %}
+                            {% endfor %}
+                        </td>
                         <td>
                             {% if empresa.status_assinatura == 'ativa' %}
                                 <span class="badge bg-success">Ativa</span>
-                            {% elif empresa.status_assinatura == 'bloqueada' %}
-                                <span class="badge bg-danger">Bloqueada</span>
                             {% else %}
-                                <span class="badge bg-secondary">{{ empresa.status_assinatura }}</span>
+                                <span class="badge bg-danger">Bloqueada</span>
                             {% endif %}
                         </td>
-                        <td>{{ empresa.data_criacao.strftime('%d/%m/%Y') }}</td>
-                        <td class="text-end">
-                            {% if empresa.nome_empresa != 'Sistema Call Center' %}
-                                <form action="{{ url_for('admin.toggle_status', id=empresa.id) }}" method="POST" class="d-inline">
-                                    {% if empresa.status_assinatura == 'ativa' %}
-                                        <button type="submit" class="btn btn-sm btn-outline-warning" title="Bloquear Acesso">
-                                            <i class="fas fa-lock"></i>
-                                        </button>
-                                    {% else %}
-                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Reativar Acesso">
-                                            <i class="fas fa-lock-open"></i>
-                                        </button>
-                                    {% endif %}
-                                </form>
-                                
-                                <a href="{{ url_for('admin.editar_empresa', id=empresa.id) }}" class="btn btn-sm btn-outline-primary" title="Editar Empresa">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-
-                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal" data-empresa-id="{{ empresa.id }}" data-empresa-nome="{{ empresa.nome_empresa }}" title="Excluir Empresa">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
+                        <td>
+                            {% if empresa.status_pagamento == 'em_dia' %}
+                                <span class="badge bg-success">Em Dia</span>
                             {% else %}
-                                <span class="text-muted fst-italic">Não aplicável</span>
+                                <span class="badge bg-warning text-dark">Inadimplente</span>
                             {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <form action="{{ url_for('admin.toggle_status', id=empresa.id) }}" method="POST" class="d-inline">
+                                {% if empresa.status_assinatura == 'ativa' %}
+                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Bloquear Acesso">
+                                        <i class="fas fa-lock"></i>
+                                    </button>
+                                {% else %}
+                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Reativar Acesso">
+                                        <i class="fas fa-lock-open"></i>
+                                    </button>
+                                {% endif %}
+                            </form>
+                            <a href="{{ url_for('admin.editar_empresa', id=empresa.id) }}" class="btn btn-sm btn-outline-primary" title="Editar Empresa">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal" data-empresa-id="{{ empresa.id }}" data-empresa-nome="{{ empresa.nome_empresa }}" title="Excluir Empresa">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -94,7 +89,7 @@
       </div>
       <div class="modal-body">
         Você tem certeza que deseja excluir a empresa <strong id="empresaNomeModal"></strong>?
-        <p class="text-danger mt-2">Essa ação é permanente e todos os dados associados (usuários, conversas, avaliações) serão perdidos.</p>
+        <p class="text-danger mt-2">Essa ação é permanente e todos os dados associados serão perdidos.</p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>

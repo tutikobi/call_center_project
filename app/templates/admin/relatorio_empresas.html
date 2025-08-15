@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">{{ page_title }}</h1>
+    <button id="btnGerarPdf" class="btn btn-primary">
+        <i class="fas fa-print me-2"></i> Gerar PDF / Imprimir
+    </button>
+</div>
+
+<div class="card" id="areaRelatorio">
+    <div class="card-header">
+        <h4>Lista de Empresas Cadastradas</h4>
+        <p class="mb-0 text-muted">Relatório gerado em: {{ data_geracao }}</p>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Empresa</th>
+                        <th>CNPJ</th>
+                        <th>Email do Admin</th>
+                        <th>Assinatura</th>
+                        <th>Pagamento</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for empresa in empresas %}
+                    <tr>
+                        <td>{{ empresa.nome_empresa }}</td>
+                        <td>{{ empresa.cnpj }}</td>
+                        <td>
+                            {% for user in empresa.usuarios %}
+                                {% if user.role == 'admin_empresa' %}
+                                    {{ user.email }}
+                                {% endif %}
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if empresa.status_assinatura == 'ativa' %}
+                                <span class="badge bg-success">Ativa</span>
+                            {% else %}
+                                <span class="badge bg-danger">Bloqueada</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if empresa.status_pagamento == 'em_dia' %}
+                                <span class="badge bg-success">Em Dia</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Inadimplente</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center">Nenhuma empresa encontrada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnGerarPdf = document.getElementById('btnGerarPdf');
+    
+    if (btnGerarPdf) {
+        btnGerarPdf.addEventListener('click', function() {
+            const areaRelatorio = document.getElementById('areaRelatorio');
+            
+            html2canvas(areaRelatorio, { scale: 2 }).then(canvas => { // Aumenta a escala para melhor qualidade
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'mm', 'a4');
+                
+                const imgData = canvas.toDataURL('image/png');
+                const imgProps= doc.getImageProperties(imgData);
+                const pdfWidth = doc.internal.pageSize.getWidth() - 20; // com margens
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                
+                doc.addImage(imgData, 'PNG', 10, 10, pdfWidth, pdfHeight);
+                doc.save('relatorio-empresas.pdf');
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

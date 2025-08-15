@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import func
 import requests
 import json
+from .admin import admin_required # Importa o decorator do admin para proteger a rota
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -15,7 +16,7 @@ bp = Blueprint('api', __name__, url_prefix='/api')
 def dados_dashboard_graficos():
     empresa_id_do_usuario = current_user.empresa_id
 
-    # 1. Gráfico de Atendimentos por Canal (não muda, mas mantemos para clareza)
+    # 1. Gráfico de Atendimentos por Canal
     atendimentos_por_canal = db.session.query(
         Avaliacao.canal, func.count(Avaliacao.id)
     ).filter(Avaliacao.empresa_id == empresa_id_do_usuario).group_by(Avaliacao.canal).all()
@@ -25,9 +26,7 @@ def dados_dashboard_graficos():
         'data': [item[1] for item in atendimentos_por_canal]
     }
 
-    # --- CONSULTA CORRIGIDA AQUI ---
     # 2. Gráfico de CSAT Médio por Agente
-    # A consulta agora faz o JOIN com a tabela Usuario usando Avaliacao.agente_id
     csat_por_agente = db.session.query(
         Usuario.nome, func.avg(Avaliacao.csat)
     ).join(Usuario, Avaliacao.agente_id == Usuario.id)\
@@ -44,7 +43,22 @@ def dados_dashboard_graficos():
         'graficoCsatAgente': dados_csat_agente
     })
 
-# --- O RESTO DO ARQUIVO PERMANECE O MESMO ---
+# --- NOVA ROTA DE API PARA O DASHBOARD DO ADMIN ---
+@bp.route("/dados_admin_dashboard")
+@login_required
+@admin_required
+def dados_admin_dashboard():
+    # Busca o número de empresas ativas e bloqueadas, excluindo a empresa do sistema
+    ativas = Empresa.query.filter(Empresa.status_assinatura == 'ativa', Empresa.nome_empresa != "Sistema Call Center").count()
+    bloqueadas = Empresa.query.filter(Empresa.status_assinatura == 'bloqueada', Empresa.nome_empresa != "Sistema Call Center").count()
+
+    dados_grafico = {
+        'labels': ['Ativas', 'Bloqueadas'],
+        'data': [ativas, bloqueadas]
+    }
+
+    return jsonify({'graficoEmpresas': dados_grafico})
+
 
 @bp.route("/webhook/<int:empresa_id>", methods=["GET", "POST"])
 def webhook_whatsapp(empresa_id):
@@ -80,7 +94,7 @@ def processar_mensagem_recebida(message, empresa):
         )
         db.session.add(conversa)
         db.session.flush()
-    nova_mensagem = MensagemWhatsApp(conversa_id=conversa.id, remetente='cliente', conteudo=conteudo)
+    nova_mensagem = MensagemWhatsApp(conversa_id=conversa.id, remetente='cliente', conteudo=conteudo, empresa_id=empresa.id)
     db.session.add(nova_mensagem)
     db.session.commit()
 

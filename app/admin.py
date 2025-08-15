@@ -5,6 +5,7 @@ from .models import db, Empresa, Usuario, TicketSuporte
 from flask_login import login_required, current_user
 from functools import wraps
 import re
+from datetime import datetime
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -17,6 +18,45 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# ROTA PARA O DASHBOARD DO ADMIN (COM MÉTRICAS E GRÁFICOS)
+@bp.route('/dashboard')
+@login_required
+@admin_required
+def dashboard():
+    total_empresas = Empresa.query.filter(Empresa.nome_empresa != "Sistema Call Center").count()
+    empresas_ativas = Empresa.query.filter(Empresa.status_assinatura == 'ativa', Empresa.nome_empresa != "Sistema Call Center").count()
+    empresas_bloqueadas = total_empresas - empresas_ativas
+    
+    return render_template('admin/dashboard.html', 
+                           page_title="Dashboard do Administrador",
+                           total_empresas=total_empresas,
+                           empresas_ativas=empresas_ativas,
+                           empresas_bloqueadas=empresas_bloqueadas)
+
+# ROTA PARA GERENCIAR EMPRESAS (APENAS A TABELA)
+@bp.route('/')
+@login_required
+@admin_required
+def index():
+    empresas = Empresa.query.filter(Empresa.nome_empresa != "Sistema Call Center").order_by(Empresa.nome_empresa).all()
+    return render_template('admin/index.html', 
+                           empresas=empresas, 
+                           page_title="Gerenciar Empresas")
+
+# ROTA PARA O RELATÓRIO DE EMPRESAS
+@bp.route('/relatorio_empresas')
+@login_required
+@admin_required
+def relatorio_empresas():
+    empresas = Empresa.query.filter(Empresa.nome_empresa != "Sistema Call Center").order_by(Empresa.nome_empresa).all()
+    data_geracao = datetime.now().strftime('%d/%m/%Y às %H:%M:%S')
+    return render_template('admin/relatorio_empresas.html', 
+                           empresas=empresas, 
+                           page_title="Relatório de Empresas",
+                           data_geracao=data_geracao)
+
+# --- Funções de validação e CRUD de empresas (permanecem as mesmas) ---
+
 def is_valid_cnpj(cnpj):
     if not cnpj: return False
     cnpj = re.sub(r'[^0-9]', '', cnpj)
@@ -25,13 +65,6 @@ def is_valid_cnpj(cnpj):
 def is_valid_email(email):
     if not email: return False
     return re.match(r'[^@\s]+@[^@\s]+\.[^@\s]+', email)
-
-@bp.route('/')
-@login_required
-@admin_required
-def index():
-    empresas = Empresa.query.order_by(Empresa.nome_empresa).all()
-    return render_template('admin/index.html', empresas=empresas, page_title="Dashboard do Administrador")
 
 @bp.route('/empresas/nova', methods=['GET', 'POST'])
 @login_required

@@ -5,7 +5,6 @@
 {% block content %}
 <h1 class="h2 mb-4">Dashboard Unificado - Chamadas & WhatsApp</h1>
 
-<!-- Cards de Métricas com a nova estrutura HTML -->
 <div class="row">
     <div class="col-lg-3 col-md-6 mb-4">
         <div class="metric-card">
@@ -45,7 +44,6 @@
     </div>
 </div>
 
-<!-- O resto do arquivo (gráficos, etc.) permanece o mesmo -->
 <div class="row">
     <div class="col-lg-4 mb-4">
         <div class="chart-card">
@@ -65,18 +63,23 @@
     </div>
 </div>
 
-<!-- Agentes da Empresa -->
 <div class="row mt-2">
     <div class="col-12">
         <h3 class="h4">Agentes da Empresa</h3>
         <div class="row">
             {% for agente in agentes_online %}
-            <div class="col-lg-3 col-md-6">
+            <div class="col-lg-3 col-md-6 mb-3">
                 <div class="agent-card">
-                    <div class="agent-avatar">{{ agente.nome[0] }}</div>
+                    <div class="agent-avatar">{{ agente.nome[0] | upper }}</div>
                     <div class="agent-info">
                         <div class="agent-name">{{ agente.nome }}</div>
-                        <div class="agent-status text-muted">{{ agente.role }}</div>
+                        <div class="agent-status text-muted">
+                            {% if agente.role == 'admin_empresa' %}
+                                Admin da Empresa
+                            {% else %}
+                                Agente
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>

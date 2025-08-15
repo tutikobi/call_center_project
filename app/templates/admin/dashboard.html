@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<h1 class="h2 mb-4">{{ page_title }}</h1>
+
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon bg-primary"><i class="fas fa-building"></i></div>
+            <div class="metric-content">
+                <div class="metric-value">{{ total_empresas }}</div>
+                <div class="metric-label">Empresas Cadastradas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon bg-success"><i class="fas fa-check-circle"></i></div>
+            <div class="metric-content">
+                <div class="metric-value">{{ empresas_ativas }}</div>
+                <div class="metric-label">Empresas Ativas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon bg-danger"><i class="fas fa-lock"></i></div>
+            <div class="metric-content">
+                <div class="metric-value">{{ empresas_bloqueadas }}</div>
+                <div class="metric-label">Empresas Bloqueadas</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                Status das Empresas
+            </div>
+            <div class="card-body" style="position: relative; height: 350px;">
+                <canvas id="graficoStatusEmpresas"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Função para renderizar gráficos
+    const renderChart = (ctx, type, labels, data, chartLabel) => {
+        const canvas = ctx.canvas;
+        const parent = canvas.parentElement;
+        if (!data || data.length === 0) {
+            canvas.style.display = 'none';
+            parent.innerHTML = '<p class="text-center text-muted mt-5">Não há dados para exibir este gráfico.</p>';
+            return;
+        }
+
+        const chartColors = ['#2ecc71', '#e74c3c']; // Verde para Ativas, Vermelho para Bloqueadas
+
+        new Chart(ctx, {
+            type: type,
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: chartLabel,
+                    data: data,
+                    backgroundColor: chartColors,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+    };
+
+    // Fetch para os dados do gráfico do admin
+    fetch("{{ url_for('api.dados_admin_dashboard') }}")
+        .then(response => {
+            if (!response.ok) throw new Error('Falha na resposta da rede');
+            return response.json();
+        })
+        .then(data => {
+            const ctxEmpresas = document.getElementById('graficoStatusEmpresas');
+            if (ctxEmpresas && data.graficoEmpresas) {
+                renderChart(ctxEmpresas.getContext('2d'), 'pie', data.graficoEmpresas.labels, data.graficoEmpresas.data, 'Status das Empresas');
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao buscar dados para o gráfico:', error);
+            document.getElementById('graficoStatusEmpresas').parentElement.innerHTML = '<p class="text-center text-danger mt-5">Erro ao carregar gráfico.</p>';
+        });
+});
+</script>
+{% endblock %}
