@@ -1,31 +1,24 @@
 # call_center_project/app/config.py
 
 import os
-# call_center_project/app/config.py
-
-import os
-
-class Config:
-    # ... (suas configurações existentes como SECRET_KEY, etc.) ...
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'chave_secreta_padrao_para_desenvolvimento')
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///avaliacoes_whatsapp.db')
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    
-    # Adicione esta linha para facilitar a troca para o modo de teste
-    TESTING = False
-
-# ... (outras classes de configuração se houver) ...
 
 class Config:
     """Configurações base da aplicação."""
     # Chave secreta para proteger sessões e cookies.
-    # Em produção, use um valor mais seguro e carregue de variáveis de ambiente.
     SECRET_KEY = os.environ.get('SECRET_KEY', 'chave_secreta_padrao_para_desenvolvimento')
 
-    # Configuração do banco de dados SQLite.
-    # O banco será criado na pasta 'instance', que o Flask cria automaticamente.
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///avaliacoes_whatsapp.db')
+    # --- CONFIGURAÇÃO DA BASE DE DADOS ATUALIZADA PARA POSTGRESQL ---
+    # Lembre-se de substituir 'sua_senha_aqui' pela palavra-passe que definiu na instalação do Postgres.
+    # 'call_center_db' é o nome que daremos à nossa base de dados.
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
+        'DATABASE_URL', 
+        'postgresql://postgres:2509@localhost:5432/call_center_db'
+    )
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # Adicionado para facilitar a troca para o modo de teste
+    TESTING = False
 
     # --- Tokens e Chaves de API ---
     # Token para proteger suas APIs internas
