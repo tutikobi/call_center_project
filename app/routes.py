@@ -9,30 +9,26 @@ import random
 
 bp = Blueprint('routes', __name__)
 
-# call_center_project/app/routes.py
-
-# ... (importações no topo) ...
-
-bp = Blueprint('routes', __name__)
-
-# --- FUNÇÃO 'index' ATUALIZADA ---
 @bp.route("/")
-@login_required
 def index():
     """
-    Ponto de entrada para utilizadores logados.
-    Redireciona para o dashboard correto com base no 'role'.
-    O decorator @login_required garante que apenas utilizadores autenticados chegam aqui.
+    Ponto de entrada principal da aplicação.
+    - Se o utilizador estiver logado, redireciona para o dashboard correto.
+    - Se não estiver logado, redireciona para a página de login.
     """
-    if current_user.role == 'super_admin':
-        return redirect(url_for('admin.dashboard'))
-    return redirect(url_for("routes.dashboard"))
+    if current_user.is_authenticated:
+        if current_user.role == 'super_admin':
+            return redirect(url_for('admin.dashboard'))
+        return redirect(url_for("routes.dashboard"))
+    return redirect(url_for('auth.login'))
 
-# ... (O resto do ficheiro 'routes.py' continua daqui para baixo sem alterações) ...
+
 @bp.route("/dashboard")
 @login_required
 def dashboard():
-    # A verificação do super_admin foi removida, pois ele nunca chegará aqui.
+    # O decorator @login_required já garante que apenas utilizadores logados chegam aqui.
+    # A lógica no auth.py e no index já direciona o super_admin para o seu próprio dashboard.
+    
     empresa_id_do_usuario = current_user.empresa_id
     total_avaliacoes = db.session.query(Avaliacao.id).filter_by(empresa_id=empresa_id_do_usuario).count()
     conversas_ativas = db.session.query(ConversaWhatsApp.id).filter_by(empresa_id=empresa_id_do_usuario, status='ativo').count()
@@ -82,7 +78,6 @@ def conversas():
         status='ativo'
     )
 
-    # Lógica para mostrar apenas conversas atribuídas ao agente
     if current_user.role == 'agente':
         query_conversas = query_conversas.filter(ConversaWhatsApp.agente_atribuido_id == current_user.id)
 
