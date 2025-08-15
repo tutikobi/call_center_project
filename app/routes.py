@@ -11,24 +11,18 @@ bp = Blueprint('routes', __name__)
 
 @bp.route("/")
 def index():
-    """
-    Ponto de entrada principal da aplicação.
-    - Se o utilizador estiver logado, redireciona para o dashboard correto.
-    - Se não estiver logado, redireciona para a página de login.
-    """
     if current_user.is_authenticated:
         if current_user.role == 'super_admin':
             return redirect(url_for('admin.dashboard'))
         return redirect(url_for("routes.dashboard"))
     return redirect(url_for('auth.login'))
 
-
 @bp.route("/dashboard")
 @login_required
 def dashboard():
-    # O decorator @login_required já garante que apenas utilizadores logados chegam aqui.
-    # A lógica no auth.py e no index já direciona o super_admin para o seu próprio dashboard.
-    
+    if current_user.role == 'super_admin':
+        return redirect(url_for('admin.dashboard'))
+        
     empresa_id_do_usuario = current_user.empresa_id
     total_avaliacoes = db.session.query(Avaliacao.id).filter_by(empresa_id=empresa_id_do_usuario).count()
     conversas_ativas = db.session.query(ConversaWhatsApp.id).filter_by(empresa_id=empresa_id_do_usuario, status='ativo').count()

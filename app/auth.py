@@ -9,7 +9,6 @@ bp = Blueprint('auth', __name__)
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        # Se um utilizador já logado aceder à página /login, redireciona-o para o dashboard correto
         if current_user.role == 'super_admin':
             return redirect(url_for('admin.dashboard'))
         return redirect(url_for('routes.dashboard'))
@@ -25,8 +24,6 @@ def login():
         
         login_user(user, remember=True)
         
-        # --- LÓGICA DE REDIRECIONAMENTO DEFINITIVA ---
-        # Determina para onde ir com base no 'role' do utilizador
         if user.role == 'super_admin':
             return redirect(url_for('admin.dashboard'))
         else:
