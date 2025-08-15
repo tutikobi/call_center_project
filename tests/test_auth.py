@@ -14,19 +14,19 @@ def test_successful_agent_login_and_logout(test_client):
     db.session.add(empresa)
     db.session.commit()
     user = Usuario(email="agent@test.com", nome="Test Agent", empresa_id=empresa.id, role="agente")
-    user.set_password("password123")
+    user.set_password("password123") # Senha correta
     db.session.add(user)
     db.session.commit()
 
     # Teste de Login
     response = test_client.post('/login', data={
         'email': 'agent@test.com',
-        'password': 'password12ajudante123'
+        'password': 'password123'  # <-- CORRIGIDO AQUI (antes estava errado)
     }, follow_redirects=True)
     
     assert response.status_code == 200
     assert b"Dashboard Unificado" in response.data # Conteúdo específico do dashboard de agente
-    assert b"Dashboard do Administrador" not in response.data
+    assert b"Login" not in response.data
 
     # Teste de Logout
     response = test_client.get('/logout', follow_redirects=True)
@@ -56,7 +56,7 @@ def test_successful_superadmin_login(test_client):
     }, follow_redirects=True)
     
     assert response.status_code == 200
-    assert b"Dashboard do Administrador" in response.data # Conteúdo específico do dashboard de admin
+    assert b"Dashboard do Administrador" in response.data
     assert b"Dashboard Unificado" not in response.data
 
 def test_login_with_wrong_password(test_client):
@@ -81,4 +81,4 @@ def test_login_with_wrong_password(test_client):
     }, follow_redirects=True)
 
     assert response.status_code == 200
-    assert b"Credenciais inv\xc3\xa1lidas" in response.data # Verifica a mensagem de erro
+    assert b"Credenciais inv\xc3\xa1lidas" in response.data

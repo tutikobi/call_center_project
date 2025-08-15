@@ -22,6 +22,7 @@ def test_app():
         "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",  # Usa um banco de dados em memória limpo para cada teste
         "WTF_CSRF_ENABLED": False,  # Desabilita CSRF para facilitar os testes de formulário
         "SECRET_KEY": "test-secret-key-for-sessions",
+        "LOGIN_DISABLED": False # Garante que o login está ativo para os testes
     })
 
     with app.app_context():

@@ -3,7 +3,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify, flash
 from .models import db, Avaliacao, ConversaWhatsApp, Usuario
 from flask_login import login_required, current_user
-from sqlalchemy import func, and_
+from sqlalchemy import func
 from datetime import datetime, timedelta
 import random
 
