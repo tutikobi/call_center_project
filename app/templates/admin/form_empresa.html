@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<h1 class="h2 mb-4">{{ page_title }}</h1>
+
+<div class="card">
+    <div class="card-body">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- O formulário agora aponta para a rota correta dependendo se é edição ou criação -->
+        <form method="POST" action="{{ url_for('admin.editar_empresa', id=empresa.id) if is_edit else url_for('admin.nova_empresa') }}">
+            <h5 class="mb-3">Dados da Empresa</h5>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="nome_empresa" class="form-label">Nome da Empresa</label>
+                    <input type="text" class="form-control" id="nome_empresa" name="nome_empresa" value="{{ empresa.nome_empresa if empresa else form_data.nome_empresa if form_data }}" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="cnpj" class="form-label">CNPJ</label>
+                    <input type="text" class="form-control" id="cnpj" name="cnpj" placeholder="00.000.000/0000-00" value="{{ empresa.cnpj if empresa else form_data.cnpj if form_data }}" required>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="telefone_contato" class="form-label">Telefone para Contato (Opcional)</label>
+                <input type="text" class="form-control" id="telefone_contato" name="telefone_contato" placeholder="(00) 00000-0000" value="{{ empresa.telefone_contato if empresa else form_data.telefone_contato if form_data }}">
+            </div>
+
+            <!-- Se for modo de edição, não mostra os campos de criação de admin -->
+            {% if not is_edit %}
+            <hr class="my-4">
+            <h5 class="mb-3">Dados do Administrador da Empresa</h5>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="admin_nome" class="form-label">Nome Completo do Admin</label>
+                    <input type="text" class="form-control" id="admin_nome" name="admin_nome" value="{{ form_data.admin_nome if form_data }}" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="admin_email" class="form-label">Email do Admin</label>
+                    <input type="email" class="form-control" id="admin_email" name="admin_email" value="{{ form_data.admin_email if form_data }}" required>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label for="admin_senha" class="form-label">Senha Provisória</label>
+                <input type="password" class="form-control" id="admin_senha" name="admin_senha" required>
+            </div>
+            {% endif %}
+
+            <div class="d-flex justify-content-end">
+                <a href="{{ url_for('admin.index') }}" class="btn btn-secondary me-2">Cancelar</a>
+                <button type="submit" class="btn btn-success">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Adiciona a biblioteca IMask.js para máscaras de formulário -->
+<script src="https://unpkg.com/imask"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function( ) {
+        var cnpjInput = document.getElementById('cnpj');
+        if(cnpjInput) { IMask(cnpjInput, { mask: '00.000.000/0000-00' }); }
+
+        var telefoneInput = document.getElementById('telefone_contato');
+        if(telefoneInput) { IMask(telefoneInput, { mask: '(00) 00000-0000' }); }
+    });
+</script>
+{% endblock %}

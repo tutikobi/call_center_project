@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Ticket #{{ ticket.id }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">Detalhes do Ticket #{{ ticket.id }}</h1>
+    <a href="{{ url_for('admin.listar_tickets') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i> Voltar para a Lista
+    </a>
+</div>
+
+<div class="row">
+    <!-- Coluna de Informações do Ticket -->
+    <div class="col-md-7">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">{{ ticket.assunto }}</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Empresa:</strong> {{ ticket.empresa.nome_empresa }}</p>
+                <p><strong>Enviado por:</strong> {{ ticket.remetente.nome }} ({{ ticket.remetente.email }})</p>
+                <p><strong>Data de Abertura:</strong> {{ ticket.data_criacao.strftime('%d/%m/%Y às %H:%M') }}</p>
+                <hr>
+                <h6>Descrição do Problema:</h6>
+                <p class="bg-light p-3 rounded" style="white-space: pre-wrap;">{{ ticket.descricao }}</p>
+            </div>
+        </div>
+
+        <!-- Seção de Anotações (Futuro) -->
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0">Anotações Internas</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Funcionalidade de anotações será implementada em breve.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Coluna de Ações -->
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0">Status e Ações</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    <strong>Prioridade:</strong>
+                    {% if ticket.prioridade == 'alta' %}
+                        <span class="badge bg-danger">Alta</span>
+                    {% elif ticket.prioridade == 'media' %}
+                        <span class="badge bg-warning text-dark">Média</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Baixa</span>
+                    {% endif %}
+                </p>
+                <p>
+                    <strong>Status Atual:</strong>
+                    {% if ticket.status == 'aberto' %}
+                        <span class="badge bg-success">Aberto</span>
+                    {% elif ticket.status == 'em_andamento' %}
+                        <span class="badge bg-info text-dark">Em Andamento</span>
+                    {% else %}
+                        <span class="badge bg-light text-dark border">Fechado</span>
+                    {% endif %}
+                </p>
+                <hr>
+                <form action="{{ url_for('admin.mudar_status_ticket', id=ticket.id) }}" method="POST">
+                    <div class="mb-3">
+                        <label for="novo_status" class="form-label"><strong>Mudar Status para:</strong></label>
+                        <select name="novo_status" id="novo_status" class="form-select">
+                            <option value="aberto" {% if ticket.status == 'aberto' %}disabled{% endif %}>Aberto</option>
+                            <option value="em_andamento" {% if ticket.status == 'em_andamento' %}disabled{% endif %}>Em Andamento</option>
+                            <option value="fechado" {% if ticket.status == 'fechado' %}disabled{% endif %}>Fechado</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-save me-2"></i> Salvar Novo Status
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

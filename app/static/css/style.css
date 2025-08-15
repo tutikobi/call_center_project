@@ -1,0 +1,147 @@
+/* call_center_project/app/static/css/style.css */
+
+/* Estilo geral do corpo da página */
+body {
+    background-color: #f8f9fa;
+    display: flex;
+    min-height: 100vh;
+}
+
+/* --- Barra Lateral (Sidebar) --- */
+.sidebar {
+    width: 250px;
+    background-color: #343a40; /* Cor escura para a barra lateral */
+    color: white;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    padding-top: 56px; /* Altura da navbar superior */
+    z-index: 100;
+}
+
+.sidebar .nav-link {
+    color: #adb5bd;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+}
+
+.sidebar .nav-link .fa-fw {
+    width: 1.25em;
+}
+
+.sidebar .nav-link:hover {
+    background-color: #495057;
+    color: white;
+}
+
+.sidebar .nav-link.active {
+    background-color: #0d6efd; /* Cor de destaque para o item ativo */
+    color: white;
+    font-weight: bold;
+}
+
+/* --- Conteúdo Principal --- */
+.content {
+    margin-left: 250px; /* Mesmo valor da largura da sidebar */
+    padding: 2rem;
+    padding-top: 76px; /* Espaço para a navbar superior */
+    width: calc(100% - 250px);
+}
+
+/* --- Cards de Métricas (Dashboard) - CÓDIGO CORRIGIDO E MELHORADO --- */
+.metric-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    display: flex; /* ATIVA O FLEXBOX */
+    align-items: center; /* ALINHA OS ITENS VERTICALMENTE AO CENTRO */
+    gap: 15px; /* CRIA UM ESPAÇO ENTRE O ÍCONE E O TEXTO */
+}
+
+.metric-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%; /* Deixa o fundo do ícone redondo */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 22px;
+    flex-shrink: 0; /* Impede que o ícone seja esmagado */
+}
+
+.metric-content {
+    display: flex;
+    flex-direction: column; /* Coloca o valor e o rótulo um sobre o outro */
+}
+
+.metric-value {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.metric-label {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+/* Cores de fundo para os ícones */
+.bg-info { background-color: #17a2b8 !important; }
+.bg-success { background-color: #28a745 !important; }
+.bg-warning { background-color: #ffc107 !important; }
+.bg-danger { background-color: #dc3545 !important; }
+
+
+/* --- Outros Estilos (Gráficos, Agentes, etc.) --- */
+.chart-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    height: 100%;
+}
+
+.agent-card {
+    display: flex;
+    align-items: center;
+    background-color: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.agent-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #28a745;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 15px;
+}
+
+.agent-name {
+    font-weight: 600;
+}
+
+.agent-status {
+    font-size: 0.85rem;
+}
+
+/* Estilo para o Botão Flutuante de Suporte (FAB) */
+#support-fab {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    z-index: 1050; /* Para ficar acima de outros elementos */
+}

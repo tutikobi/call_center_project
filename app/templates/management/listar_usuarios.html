@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">{{ page_title }}</h1>
+    <a href="{{ url_for('management.novo_usuario') }}" class="btn btn-success">
+        <i class="fas fa-plus me-2"></i>Novo Usuário
+    </a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Cargo</th>
+                        <th>Status</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for usuario in usuarios %}
+                    <tr>
+                        <td>{{ usuario.nome }}</td>
+                        <td>{{ usuario.email }}</td>
+                        <td>
+                            {% if usuario.role == 'admin_empresa' %}
+                                <span class="badge bg-primary">Admin da Empresa</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Agente</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if usuario.status == 'ativo' %}
+                                <span class="badge bg-success">Ativo</span>
+                            {% else %}
+                                <span class="badge bg-danger">Bloqueado</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <!-- Impede que o admin edite a si mesmo na lista -->
+                            {% if usuario.id != current_user.id %}
+                                <!-- Botão de Bloquear/Desbloquear -->
+                                <form action="{{ url_for('management.toggle_status_usuario', id=usuario.id) }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm {% if usuario.status == 'ativo' %}btn-outline-warning{% else %}btn-outline-success{% endif %}" title="{% if usuario.status == 'ativo' %}Bloquear Acesso{% else %}Reativar Acesso{% endif %}">
+                                        <i class="fas {% if usuario.status == 'ativo' %}fa-lock{% else %}fa-lock-open{% endif %}"></i>
+                                    </button>
+                                </form>
+                            {% endif %}
+
+                            <!-- Botão de Editar -->
+                            <a href="{{ url_for('management.editar_usuario', id=usuario.id) }}" class="btn btn-sm btn-outline-primary" title="Editar Usuário">
+                                <i class="fas fa-pencil-alt"></i>
+                            </a>
+
+                            <!-- Impede que o admin exclua a si mesmo na lista -->
+                            {% if usuario.id != current_user.id %}
+                                <!-- Botão de Excluir com Modal de Confirmação -->
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal" data-user-id="{{ usuario.id }}" data-user-name="{{ usuario.nome }}" title="Excluir Usuário">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">Nenhum usuário encontrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmDeleteModalLabel">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Você tem certeza que deseja excluir o usuário <strong id="modalUserName"></strong>?
+                <p class="text-danger mt-2">Esta ação é permanente e não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="deleteForm" method="POST">
+                    <button type="submit" class="btn btn-danger">Sim, Excluir</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Script para popular o modal de confirmação com os dados corretos do usuário
+document.addEventListener('DOMContentLoaded', function () {
+    var confirmDeleteModal = document.getElementById('confirmDeleteModal');
+    confirmDeleteModal.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var userId = button.getAttribute('data-user-id');
+        var userName = button.getAttribute('data-user-name');
+
+        var modalUserName = confirmDeleteModal.querySelector('#modalUserName');
+        var deleteForm = confirmDeleteModal.querySelector('#deleteForm');
+
+        modalUserName.textContent = userName;
+        deleteForm.action = '/management/usuarios/' + userId + '/excluir';
+    });
+});
+</script>
+{% endblock %}

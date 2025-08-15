@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h1 class="h2 mb-4">Dashboard Unificado - Chamadas & WhatsApp</h1>
+
+<!-- Cards de Métricas com a nova estrutura HTML -->
+<div class="row">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon bg-info"><i class="fas fa-phone-alt"></i></div>
+            <div class="metric-content">
+                <div class="metric-value">{{ total_avaliacoes or 0 }}</div>
+                <div class="metric-label">Avaliações</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon bg-success"><i class="fab fa-whatsapp"></i></div>
+            <div class="metric-content">
+                <div class="metric-value">{{ conversas_ativas or 0 }}</div>
+                <div class="metric-label">Conversas Ativas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon bg-warning"><i class="fas fa-clock"></i></div>
+            <div class="metric-content">
+                <div class="metric-value">N/A</div>
+                <div class="metric-label">T.M. Resposta</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon bg-danger"><i class="fas fa-smile"></i></div>
+            <div class="metric-content">
+                <div class="metric-value">{{ csat_geral or 'N/A' }}</div>
+                <div class="metric-label">CSAT Médio</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- O resto do arquivo (gráficos, etc.) permanece o mesmo -->
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="chart-card">
+            <h5 class="card-title">Atendimentos por Canal</h5>
+            <div style="position: relative; height: 300px; width: 100%;">
+                <canvas id="graficoCanais"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8 mb-4">
+        <div class="chart-card">
+            <h5 class="card-title">CSAT Médio por Agente</h5>
+            <div style="position: relative; height: 300px; width: 100%;">
+                <canvas id="graficoCsatAgente"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Agentes da Empresa -->
+<div class="row mt-2">
+    <div class="col-12">
+        <h3 class="h4">Agentes da Empresa</h3>
+        <div class="row">
+            {% for agente in agentes_online %}
+            <div class="col-lg-3 col-md-6">
+                <div class="agent-card">
+                    <div class="agent-avatar">{{ agente.nome[0] }}</div>
+                    <div class="agent-info">
+                        <div class="agent-name">{{ agente.nome }}</div>
+                        <div class="agent-status text-muted">{{ agente.role }}</div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-muted">Nenhum agente encontrado.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// O bloco de scripts permanece o mesmo da resposta anterior
+document.addEventListener('DOMContentLoaded', function () {
+    const getChartColors = (numColors) => {
+        const colors = ['#27ae60', '#2980b9', '#f1c40f', '#e74c3c', '#8e44ad', '#34495e', '#1abc9c'];
+        return colors.slice(0, numColors);
+    };
+    const renderChart = (ctx, type, labels, data, chartLabel) => {
+        const canvas = ctx.canvas;
+        const parent = canvas.parentElement;
+        if (!data || data.length === 0) {
+            canvas.style.display = 'none';
+            let message = parent.querySelector('.no-data-message');
+            if (!message) {
+                message = document.createElement('p');
+                message.textContent = 'Não há dados para exibir este gráfico.';
+                message.className = 'text-center text-muted mt-5 pt-5 no-data-message';
+                parent.appendChild(message);
+            }
+            return;
+        }
+        new Chart(ctx, {
+            type: type,
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: chartLabel,
+                    data: data,
+                    backgroundColor: getChartColors(data.length),
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: type === 'pie',
+                        position: 'bottom',
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, display: type === 'bar' },
+                    x: { display: type === 'bar' }
+                }
+            }
+        });
+    };
+    fetch("{{ url_for('api.dados_dashboard_graficos') }}")
+        .then(response => {
+            if (!response.ok) throw new Error('Falha na resposta da rede');
+            return response.json();
+        })
+        .then(data => {
+            const ctxCanais = document.getElementById('graficoCanais');
+            if (ctxCanais && data.graficoCanais) {
+                renderChart(ctxCanais.getContext('2d'), 'pie', data.graficoCanais.labels, data.graficoCanais.data, 'Atendimentos');
+            }
+            const ctxCsatAgente = document.getElementById('graficoCsatAgente');
+            if (ctxCsatAgente && data.graficoCsatAgente) {
+                renderChart(ctxCsatAgente.getContext('2d'), 'bar', data.graficoCsatAgente.labels, data.graficoCsatAgente.data, 'CSAT Médio');
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao buscar dados para os gráficos:', error);
+            document.querySelector('#graficoCanais').parentElement.innerHTML = '<p class="text-center text-muted mt-5 pt-5">Erro ao carregar gráfico.</p>';
+            document.querySelector('#graficoCsatAgente').parentElement.innerHTML = '<p class="text-center text-muted mt-5 pt-5">Erro ao carregar gráfico.</p>';
+        });
+});
+</script>
+{% endblock %}

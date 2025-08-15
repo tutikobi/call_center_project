@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Registrar Avaliação{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Formulário de Avaliação de Atendimento</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <!-- Campo Agente (agora um menu suspenso) -->
+                        <div class="mb-3">
+                            <label for="agente_id" class="form-label">Agente Avaliado</label>
+                            <select class="form-select" id="agente_id" name="agente_id" required>
+                                <option value="" disabled selected>Selecione um agente...</option>
+                                {% for agente in agentes %}
+                                <option value="{{ agente.id }}">{{ agente.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Campo Canal -->
+                        <div class="mb-3">
+                            <label for="canal" class="form-label">Canal de Atendimento</label>
+                            <select class="form-select" id="canal" name="canal" required>
+                                <option value="whatsapp">WhatsApp</option>
+                                <option value="voz">Voz</option>
+                                <option value="email">Email</option>
+                            </select>
+                        </div>
+
+                        <!-- Campo ID da Chamada/Conversa -->
+                        <div class="mb-3">
+                            <label for="chamada_id" class="form-label">ID da Chamada/Conversa</label>
+                            <input type="text" class="form-control" id="chamada_id" name="chamada_id" placeholder="Ex: WA_12345 ou CALL_67890">
+                        </div>
+
+                        <!-- Campo CSAT (agora um seletor deslizante) -->
+                        <div class="mb-4">
+                            <label for="csat" class="form-label">Nota de Satisfação (CSAT): <span id="csatValue" class="badge bg-success ms-2">3.0</span></label>
+                            <input type="range" class="form-range" id="csat" name="csat" min="0.5" max="5" step="0.5" value="3.0">
+                        </div>
+
+                        <!-- Campo Observações -->
+                        <div class="mb-3">
+                            <label for="observacoes" class="form-label">Observações</label>
+                            <textarea class="form-control" id="observacoes" name="observacoes" rows="4" placeholder="Descreva os pontos fortes e fracos do atendimento..."></textarea>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">Registrar Avaliação</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Script para atualizar o valor da nota CSAT em tempo real
+document.addEventListener('DOMContentLoaded', function() {
+    const csatSlider = document.getElementById('csat');
+    const csatValueSpan = document.getElementById('csatValue');
+
+    if (csatSlider && csatValueSpan) {
+        csatSlider.addEventListener('input', function() {
+            // Formata o número para ter sempre uma casa decimal (ex: 3.0, 4.5)
+            const formattedValue = parseFloat(this.value).toFixed(1);
+            csatValueSpan.textContent = formattedValue;
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}API & Código - Sistema Call Center{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Documentação da API & Exemplos de Código</h1>
+
+<p class="lead">Use os endpoints abaixo para integrar outros sistemas com nossa plataforma. Todas as requisições para a API (exceto o webhook) devem incluir o header de autorização: <code>Authorization: Bearer SEU_TOKEN_SUPER_SECRETO</code>.</p>
+
+<div class="accordion" id="apiAccordion">
+    <!-- Endpoint: Enviar Mensagem -->
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingOne">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                <strong>POST /api/enviar_mensagem</strong> - Envia uma mensagem de WhatsApp
+            </button>
+        </h2>
+        <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#apiAccordion">
+            <div class="accordion-body">
+                <p>Envia uma mensagem para um número de WhatsApp através da API oficial.</p>
+                <strong>Exemplo de corpo (JSON):</strong>
+                <pre><code class="language-json">{
+  "wa_id": "5511999123456",
+  "mensagem": "Olá! Como posso ajudá-lo?",
+  "agente": "Maria Silva"
+}</code></pre>
+                <strong>Exemplo com cURL:</strong>
+                <pre><code>curl -X POST http://localhost:5000/api/enviar_mensagem \
+  -H "Authorization: Bearer SEU_TOKEN_SUPER_SECRETO" \
+  -H "Content-Type: application/json" \
+  -d '{"wa_id":"5511999123456", "mensagem":"Olá!"}'</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Adicione outros endpoints aqui seguindo o mesmo padrão -->
+
+</div>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Tickets de Suporte - Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">Tickets de Suporte</h1>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('admin.listar_tickets') }}" class="row g-3 align-items-center">
+            <div class="col-md-4">
+                <label for="status" class="form-label">Filtrar por Status</label>
+                <select name="status" id="status" class="form-select">
+                    <option value="todos" {% if status_filtro == 'todos' %}selected{% endif %}>Todos</option>
+                    <option value="aberto" {% if status_filtro == 'aberto' %}selected{% endif %}>Aberto</option>
+                    <option value="em_andamento" {% if status_filtro == 'em_andamento' %}selected{% endif %}>Em Andamento</option>
+                    <option value="fechado" {% if status_filtro == 'fechado' %}selected{% endif %}>Fechado</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="prioridade" class="form-label">Filtrar por Prioridade</label>
+                <select name="prioridade" id="prioridade" class="form-select">
+                    <option value="todas" {% if prioridade_filtro == 'todas' %}selected{% endif %}>Todas</option>
+                    <option value="baixa" {% if prioridade_filtro == 'baixa' %}selected{% endif %}>Baixa</option>
+                    <option value="media" {% if prioridade_filtro == 'media' %}selected{% endif %}>Média</option>
+                    <option value="alta" {% if prioridade_filtro == 'alta' %}selected{% endif %}>Alta</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter me-2"></i> Aplicar Filtros
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Empresa</th>
+                        <th>Assunto</th>
+                        <th>Prioridade</th>
+                        <th>Status</th>
+                        <th>Data de Abertura</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ticket in tickets %}
+                    <tr>
+                        <td>#{{ ticket.id }}</td>
+                        <td>{{ ticket.empresa.nome_empresa }}</td>
+                        <td>{{ ticket.assunto }}</td>
+                        <td>
+                            {% if ticket.prioridade == 'alta' %}
+                                <span class="badge bg-danger">Alta</span>
+                            {% elif ticket.prioridade == 'media' %}
+                                <span class="badge bg-warning text-dark">Média</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Baixa</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if ticket.status == 'aberto' %}
+                                <span class="badge bg-success">Aberto</span>
+                            {% elif ticket.status == 'em_andamento' %}
+                                <span class="badge bg-info text-dark">Em Andamento</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark border">Fechado</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ ticket.data_criacao.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>
+                            <a href="{{ url_for('admin.ver_ticket', id=ticket.id) }}" class="btn btn-sm btn-outline-primary" title="Ver Detalhes">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4">
+                            <p class="mb-0">Nenhum ticket encontrado com os filtros selecionados.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

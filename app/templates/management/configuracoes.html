@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<h1 class="h2 mb-4">{{ page_title }}</h1>
+
+<div class="card">
+    <div class="card-header">
+        Credenciais da API do WhatsApp Business
+    </div>
+    <div class="card-body">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <p class="text-muted">
+            Preencha os campos abaixo com as credenciais obtidas no seu painel de desenvolvedor da Meta.
+            Essas informações são necessárias para conectar o seu número de WhatsApp ao sistema.
+        </p>
+
+        <form method="POST" action="{{ url_for('management.configuracoes') }}">
+            <div class="mb-3">
+                <label for="whatsapp_token" class="form-label">Token de Acesso Permanente</label>
+                <input type="password" class="form-control" id="whatsapp_token" name="whatsapp_token" value="{{ empresa.whatsapp_token or '' }}">
+                <small class="form-text text-muted">Seu token de acesso da API do WhatsApp.</small>
+            </div>
+
+            <div class="mb-3">
+                <label for="whatsapp_number_id" class="form-label">ID do Número de Telefone (Phone Number ID)</label>
+                <input type="text" class="form-control" id="whatsapp_number_id" name="whatsapp_number_id" value="{{ empresa.whatsapp_number_id or '' }}">
+                <small class="form-text text-muted">O ID do número que enviará e receberá as mensagens.</small>
+            </div>
+
+            <div class="mb-3">
+                <label for="webhook_verify_token" class="form-label">Seu Token de Verificação do Webhook</label>
+                <input type="text" class="form-control" id="webhook_verify_token" name="webhook_verify_token" value="{{ empresa.webhook_verify_token or '' }}">
+                <small class="form-text text-muted">Crie um token qualquer (ex: 'meu-token-secreto-123'). Você precisará dele ao configurar o webhook na Meta.</small>
+            </div>
+
+            <div class="d-flex justify-content-end mt-4">
+                <button type="submit" class="btn btn-success">Salvar Configurações</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
