@@ -23,7 +23,6 @@ def login():
             flash('Credenciais inválidas. Por favor, tente novamente.')
             return redirect(url_for('auth.login'))
         
-        # O parâmetro 'remember=True' é uma boa prática
         login_user(user, remember=True)
         
         # --- LÓGICA DE REDIRECIONAMENTO DEFINITIVA ---

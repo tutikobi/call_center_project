@@ -41,8 +41,6 @@ def dashboard():
                          csat_geral=round(csat_geral, 1),
                          agentes_online=agentes_online)
 
-# --- O resto do ficheiro permanece o mesmo ---
-
 @bp.route("/avaliar", methods=["GET", "POST"])
 @login_required
 def avaliar():

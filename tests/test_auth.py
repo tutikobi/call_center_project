@@ -26,7 +26,9 @@ def test_login_logout(test_client):
     }, follow_redirects=True)
     
     assert response.status_code == 200
-    assert b"Dashboard" in response.data
+    # --- VERIFICAÇÃO CORRIGIDA ---
+    # Para um 'agente', o dashboard correto contém esta frase
+    assert b"Dashboard Unificado" in response.data
     assert b"Login" not in response.data
 
     # Teste 2: Logout
@@ -41,8 +43,7 @@ def test_login_with_wrong_credentials(test_client):
     WHEN uma tentativa de login é feita com uma palavra-passe errada
     THEN verifica se uma mensagem de erro é exibida
     """
-    # --- BLOCO DE CONFIGURAÇÃO ADICIONADO AQUI ---
-    # Agora este teste cria o seu próprio utilizador e não depende de mais nenhum.
+    # Configuração: Criar um utilizador para o teste
     empresa = Empresa(nome_empresa="Empresa Teste Wrong Pass", cnpj="00.000.000/0000-22")
     db.session.add(empresa)
     db.session.commit()
@@ -51,7 +52,6 @@ def test_login_with_wrong_credentials(test_client):
     user.set_password("password123")
     db.session.add(user)
     db.session.commit()
-    # --- FIM DO BLOCO DE CONFIGURAÇÃO ---
 
     response = test_client.post('/login', data={
         'email': 'test2@example.com',
@@ -59,4 +59,5 @@ def test_login_with_wrong_credentials(test_client):
     }, follow_redirects=True)
 
     assert response.status_code == 200
+    # A palavra "inválidas" tem caracteres especiais, por isso verificamos a sua representação em bytes
     assert b"Credenciais inv\xc3\xa1lidas" in response.data
