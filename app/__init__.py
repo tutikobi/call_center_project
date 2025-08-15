@@ -5,10 +5,12 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from .config import Config
 import click
+from flask_migrate import Migrate # <-- ADICIONAR IMPORTAÇÃO
 
 # Inicialização das extensões
 db = SQLAlchemy()
 login_manager = LoginManager()
+migrate = Migrate() # <-- ADICIONAR INICIALIZAÇÃO
 
 def create_app():
     """Cria e configura a instância da aplicação Flask."""
@@ -17,6 +19,7 @@ def create_app():
 
     # Inicializa as extensões com a aplicação
     db.init_app(app)
+    migrate.init_app(app, db) # <-- ADICIONAR INICIALIZAÇÃO COM A APP
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     login_manager.login_message = "Por favor, faça login para acessar esta página."
@@ -27,7 +30,6 @@ def create_app():
         from .models import Usuario
         return Usuario.query.get(int(user_id))
 
-    # --- NOVO COMANDO PARA INICIALIZAR O BANCO DE DADOS ---
     @app.cli.command("init-db")
     @click.option('--with-admin', is_flag=True, help='Cria o super administrador após inicializar o banco.')
     def init_db_command(with_admin):
@@ -36,18 +38,16 @@ def create_app():
             db.drop_all()
             db.create_all()
             print("Banco de dados inicializado: tabelas apagadas e recriadas.")
-            
+
             if with_admin:
                 create_super_admin_logic()
 
     def create_super_admin_logic():
-        """Lógica para criar a empresa e o super admin. Pode ser chamada por outros comandos."""
         from .models import Empresa, Usuario
-        
+
         nome_empresa_admin = "Sistema Call Center"
         email_admin = "admin@sistemacallcenter.com"
 
-        # Esta função agora assume que as tabelas já existem
         empresa_admin = Empresa.query.filter_by(nome_empresa=nome_empresa_admin).first()
         if not empresa_admin:
             print(f"Criando empresa interna '{nome_empresa_admin}'...")
@@ -70,7 +70,7 @@ def create_app():
                 role="super_admin",
                 empresa_id=empresa_admin.id
             )
-            admin.set_password("senhaSuperForte123") # Lembre-se de usar uma senha forte
+            admin.set_password("senhaSuperForte123")
             db.session.add(admin)
             db.session.commit()
             print("\n==========================================")
@@ -81,7 +81,6 @@ def create_app():
         else:
             print("\nO usuário super administrador já existe no banco de dados.")
 
-    # Registro dos Blueprints (rotas)
     from . import routes, auth, api, admin, management
     app.register_blueprint(routes.bp)
     app.register_blueprint(auth.bp)

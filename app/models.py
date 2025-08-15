@@ -1,9 +1,10 @@
 # call_center_project/app/models.py
-
+# ... (importações no topo)
 from . import db
 from datetime import datetime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+
 
 class Empresa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -12,10 +13,7 @@ class Empresa(db.Model):
     telefone_contato = db.Column(db.String(20))
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
     status_assinatura = db.Column(db.String(20), default='ativa')
-    
-    # --- NOVA LINHA ADICIONADA AQUI ---
     status_pagamento = db.Column(db.String(20), nullable=False, default='em_dia') # Opções: 'em_dia', 'inadimplente'
-    
     whatsapp_token = db.Column(db.String(255))
     whatsapp_url = db.Column(db.String(255))
     webhook_verify_token = db.Column(db.String(255))
@@ -24,7 +22,6 @@ class Empresa(db.Model):
     conversas = db.relationship('ConversaWhatsApp', backref='empresa', lazy=True, cascade="all, delete-orphan")
     tickets_suporte = db.relationship('TicketSuporte', backref='empresa', lazy=True, cascade="all, delete-orphan")
 
-# ... (o resto do arquivo models.py permanece o mesmo) ...
 class Usuario(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
@@ -61,6 +58,11 @@ class ConversaWhatsApp(db.Model):
     fim = db.Column(db.DateTime)
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
     mensagens = db.relationship('MensagemWhatsApp', backref='conversa', lazy=True, cascade="all, delete-orphan", order_by='MensagemWhatsApp.timestamp')
+
+    # --- NOVAS LINHAS ADICIONADAS AQUI ---
+    agente_atribuido_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
+    agente_atribuido = db.relationship('Usuario', foreign_keys=[agente_atribuido_id])
+
 
 class MensagemWhatsApp(db.Model):
     id = db.Column(db.Integer, primary_key=True)
