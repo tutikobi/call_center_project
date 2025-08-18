@@ -7,71 +7,87 @@
 
 <div class="card">
     <div class="card-body">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <!-- O formulário agora aponta para a rota correta dependendo se é edição ou criação -->
         <form method="POST" action="{{ url_for('admin.editar_empresa', id=empresa.id) if is_edit else url_for('admin.nova_empresa') }}">
+            
             <h5 class="mb-3">Dados da Empresa</h5>
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label for="nome_empresa" class="form-label">Nome da Empresa</label>
-                    <input type="text" class="form-control" id="nome_empresa" name="nome_empresa" value="{{ empresa.nome_empresa if empresa else form_data.nome_empresa if form_data }}" required>
+                    <input type="text" class="form-control" id="nome_empresa" name="nome_empresa" value="{{ empresa.nome_empresa if empresa else '' }}" required>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label for="cnpj" class="form-label">CNPJ</label>
-                    <input type="text" class="form-control" id="cnpj" name="cnpj" placeholder="00.000.000/0000-00" value="{{ empresa.cnpj if empresa else form_data.cnpj if form_data }}" required>
+                    <input type="text" class="form-control" id="cnpj" name="cnpj" value="{{ empresa.cnpj if empresa else '' }}" required>
                 </div>
             </div>
-            <div class="mb-3">
-                <label for="telefone_contato" class="form-label">Telefone para Contato (Opcional)</label>
-                <input type="text" class="form-control" id="telefone_contato" name="telefone_contato" placeholder="(00) 00000-0000" value="{{ empresa.telefone_contato if empresa else form_data.telefone_contato if form_data }}">
+
+            <hr class="my-4">
+            <h5 class="mb-3">Detalhes do Plano e Pagamento</h5>
+            <div class="row align-items-end">
+                <div class="col-md-4 mb-3">
+                    <label for="plano" class="form-label">Plano Contratado</label>
+                    <select id="plano" name="plano" class="form-select" required>
+                        <option value="basico" {% if empresa and empresa.plano == 'basico' %}selected{% endif %}>Básico (5 Agentes)</option>
+                        <option value="medio" {% if empresa and empresa.plano == 'medio' %}selected{% endif %}>Médio (10 Agentes)</option>
+                        <option value="pro" {% if empresa and empresa.plano == 'pro' %}selected{% endif %}>Pro (20 Agentes)</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="forma_pagamento" class="form-label">Forma de Pagamento</label>
+                    <select id="forma_pagamento" name="forma_pagamento" class="form-select">
+                        <option value="boleto" {% if empresa and empresa.forma_pagamento == 'boleto' %}selected{% endif %}>Boleto</option>
+                        <option value="pix" {% if empresa and empresa.forma_pagamento == 'pix' %}selected{% endif %}>Pix</option>
+                        <option value="cartao_credito" {% if empresa and empresa.forma_pagamento == 'cartao_credito' %}selected{% endif %}>Cartão de Crédito</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="data_vencimento_pagamento" class="form-label">Próximo Vencimento</label>
+                    <input type="date" class="form-control" id="data_vencimento_pagamento" name="data_vencimento_pagamento" value="{{ empresa.data_vencimento_pagamento.strftime('%Y-%m-%d') if empresa and empresa.data_vencimento_pagamento else '' }}">
+                </div>
             </div>
 
-            <!-- Se for modo de edição, não mostra os campos de criação de admin -->
-            {% if not is_edit %}
             <hr class="my-4">
-            <h5 class="mb-3">Dados do Administrador da Empresa</h5>
+            <h5 class="mb-3">Monitoramento de Reputação</h5>
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" role="switch" id="monitorar_reputacao" name="monitorar_reputacao" value="y" {% if empresa and empresa.monitorar_reputacao %}checked{% endif %}>
+                <label class="form-check-label" for="monitorar_reputacao">Ativar Monitoramento</label>
+            </div>
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label for="admin_nome" class="form-label">Nome Completo do Admin</label>
-                    <input type="text" class="form-control" id="admin_nome" name="admin_nome" value="{{ form_data.admin_nome if form_data }}" required>
+                    <label for="google_reviews_url" class="form-label">URL das Avaliações Google</label>
+                    <input type="url" class="form-control" id="google_reviews_url" name="google_reviews_url" value="{{ empresa.google_reviews_url if empresa else '' }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="google_place_id" class="form-label">Google Place ID</label>
+                    <input type="text" class="form-control" id="google_place_id" name="google_place_id" placeholder="Ex: ChIJN1t_tDeuEmsRUsoyG83frY4" value="{{ empresa.google_place_id if empresa else '' }}">
+                    <small class="form-text text-muted">Essencial para a busca automática via API.</small>
+                </div>
+            </div>
+
+            {% if not is_edit %}
+            <hr class="my-4">
+            <h5 class="mb-3">Dados do Administrador</h5>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="admin_nome" class="form-label">Nome do Admin</label>
+                    <input type="text" class="form-control" name="admin_nome" required>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label for="admin_email" class="form-label">Email do Admin</label>
-                    <input type="email" class="form-control" id="admin_email" name="admin_email" value="{{ form_data.admin_email if form_data }}" required>
+                    <input type="email" class="form-control" name="admin_email" required>
                 </div>
-            </div>
-            <div class="mb-4">
-                <label for="admin_senha" class="form-label">Senha Provisória</label>
-                <input type="password" class="form-control" id="admin_senha" name="admin_senha" required>
+                <div class="mb-3">
+                    <label for="admin_senha" class="form-label">Senha Provisória</label>
+                    <input type="password" class="form-control" name="admin_senha" required>
+                </div>
             </div>
             {% endif %}
 
-            <div class="d-flex justify-content-end">
+            <div class="d-flex justify-content-end mt-4">
                 <a href="{{ url_for('admin.index') }}" class="btn btn-secondary me-2">Cancelar</a>
                 <button type="submit" class="btn btn-success">Salvar</button>
             </div>
         </form>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<!-- Adiciona a biblioteca IMask.js para máscaras de formulário -->
-<script src="https://unpkg.com/imask"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function( ) {
-        var cnpjInput = document.getElementById('cnpj');
-        if(cnpjInput) { IMask(cnpjInput, { mask: '00.000.000/0000-00' }); }
-
-        var telefoneInput = document.getElementById('telefone_contato');
-        if(telefoneInput) { IMask(telefoneInput, { mask: '(00) 00000-0000' }); }
-    });
-</script>
 {% endblock %}

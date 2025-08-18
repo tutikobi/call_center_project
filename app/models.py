@@ -1,5 +1,5 @@
 # call_center_project/app/models.py
-# ... (importações no topo)
+
 from . import db
 from datetime import datetime
 from flask_login import UserMixin
@@ -13,7 +13,17 @@ class Empresa(db.Model):
     telefone_contato = db.Column(db.String(20))
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
     status_assinatura = db.Column(db.String(20), default='ativa')
-    status_pagamento = db.Column(db.String(20), nullable=False, default='em_dia') # Opções: 'em_dia', 'inadimplente'
+    status_pagamento = db.Column(db.String(20), nullable=False, default='em_dia')
+    plano = db.Column(db.String(50), nullable=False, default='basico')
+    responsavel_contrato = db.Column(db.String(150))
+    data_contrato = db.Column(db.DateTime, default=datetime.utcnow)
+    duracao_contrato_meses = db.Column(db.Integer, default=12)
+    data_vencimento_pagamento = db.Column(db.DateTime)
+    forma_pagamento = db.Column(db.String(50), default='boleto')
+    monitorar_reputacao = db.Column(db.Boolean, default=False)
+    google_reviews_url = db.Column(db.String(255))
+    reclame_aqui_url = db.Column(db.String(255))
+    google_place_id = db.Column(db.String(255))
     whatsapp_token = db.Column(db.String(255))
     whatsapp_url = db.Column(db.String(255))
     webhook_verify_token = db.Column(db.String(255))
@@ -21,6 +31,17 @@ class Empresa(db.Model):
     avaliacoes = db.relationship('Avaliacao', backref='empresa', lazy=True, cascade="all, delete-orphan")
     conversas = db.relationship('ConversaWhatsApp', backref='empresa', lazy=True, cascade="all, delete-orphan")
     tickets_suporte = db.relationship('TicketSuporte', backref='empresa', lazy=True, cascade="all, delete-orphan")
+    historico_reputacao = db.relationship('ReputacaoHistorico', backref='empresa', lazy=True, cascade="all, delete-orphan", order_by='ReputacaoHistorico.data_registro.desc()')
+
+class ReputacaoHistorico(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
+    data_registro = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    nota_google = db.Column(db.Float)
+    total_avaliacoes_google = db.Column(db.Integer)
+    nota_reclame_aqui = db.Column(db.Float)
+    total_reclamacoes_reclame_aqui = db.Column(db.Integer)
+    observacoes = db.Column(db.Text)
 
 class Usuario(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -32,6 +53,7 @@ class Usuario(db.Model, UserMixin):
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
     avaliacoes = db.relationship('Avaliacao', backref='agente', lazy=True)
     tickets_enviados = db.relationship('TicketSuporte', backref='remetente', lazy=True)
+    anotacoes_criadas = db.relationship('AnotacaoTicket', backref='autor', lazy=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -58,11 +80,8 @@ class ConversaWhatsApp(db.Model):
     fim = db.Column(db.DateTime)
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
     mensagens = db.relationship('MensagemWhatsApp', backref='conversa', lazy=True, cascade="all, delete-orphan", order_by='MensagemWhatsApp.timestamp')
-
-    # --- NOVAS LINHAS ADICIONADAS AQUI ---
     agente_atribuido_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
     agente_atribuido = db.relationship('Usuario', foreign_keys=[agente_atribuido_id])
-
 
 class MensagemWhatsApp(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -77,8 +96,16 @@ class TicketSuporte(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     assunto = db.Column(db.String(200), nullable=False)
     descricao = db.Column(db.Text, nullable=False)
-    prioridade = db.Column(db.String(20), nullable=False, default='baixa') # baixa, media, alta
-    status = db.Column(db.String(20), nullable=False, default='aberto') # aberto, em_andamento, fechado
+    prioridade = db.Column(db.String(20), nullable=False, default='baixa')
+    status = db.Column(db.String(20), nullable=False, default='aberto')
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    anotacoes = db.relationship('AnotacaoTicket', backref='ticket', lazy=True, cascade="all, delete-orphan", order_by='AnotacaoTicket.data_criacao.asc()')
+
+class AnotacaoTicket(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('ticket_suporte.id'), nullable=False)
+    autor_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    conteudo = db.Column(db.Text, nullable=False)
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)

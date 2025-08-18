@@ -4,12 +4,8 @@ import os
 
 class Config:
     """Configurações base da aplicação."""
-    # Chave secreta para proteger sessões e cookies.
     SECRET_KEY = os.environ.get('SECRET_KEY', 'chave_secreta_padrao_para_desenvolvimento')
 
-    # --- CONFIGURAÇÃO DA BASE DE DADOS ATUALIZADA PARA POSTGRESQL ---
-    # Lembre-se de substituir 'sua_senha_aqui' pela palavra-passe que definiu na instalação do Postgres.
-    # 'call_center_db' é o nome que daremos à nossa base de dados.
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         'DATABASE_URL', 
         'postgresql://postgres:2509@localhost:5432/call_center_db'
@@ -17,15 +13,16 @@ class Config:
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Adicionado para facilitar a troca para o modo de teste
     TESTING = False
 
+    # --- NOVO CAMPO ADICIONADO ---
+    # Chave para a API do Google Places. Será obtida no Google Cloud Console.
+    GOOGLE_PLACES_API_KEY = os.environ.get('GOOGLE_PLACES_API_KEY', 'SUA_CHAVE_API_AQUI')
+
     # --- Tokens e Chaves de API ---
-    # Token para proteger suas APIs internas
     API_TOKEN = "TOKEN_SUPER_SECRETO_CALL_CENTER_2024"
 
     # --- Configurações do WhatsApp Business API ---
-    # !!! SUBSTITUA PELOS SEUS VALORES REAIS !!!
     WHATSAPP_TOKEN = os.environ.get('WHATSAPP_TOKEN', "SEU_TOKEN_WHATSAPP_BUSINESS_API")
     WHATSAPP_URL = os.environ.get('WHATSAPP_URL', "https://graph.facebook.com/v17.0/SEU_NUMERO_ID/messages" )
     WEBHOOK_VERIFY_TOKEN = os.environ.get('WEBHOOK_VERIFY_TOKEN', "SEU_TOKEN_WEBHOOK")

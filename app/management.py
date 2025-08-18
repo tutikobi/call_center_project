@@ -7,6 +7,13 @@ from functools import wraps
 
 bp = Blueprint('management', __name__, url_prefix='/management' )
 
+# --- LIMITES DE PLANOS ATUALIZADOS ---
+PLAN_LIMITS = {
+    'basico': 5,
+    'medio': 10,
+    'pro': 20
+}
+
 def empresa_admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -27,6 +34,21 @@ def listar_usuarios():
 @login_required
 @empresa_admin_required
 def novo_usuario():
+    # --- LÓGICA DE VERIFICAÇÃO DE LIMITE ATIVADA ---
+    empresa_atual = current_user.empresa
+    plano_da_empresa = empresa_atual.plano
+    limite_agentes = PLAN_LIMITS.get(plano_da_empresa, 0)
+
+    # Conta apenas os "agentes" e "admin_empresa" para o limite
+    total_usuarios = Usuario.query.filter(
+        Usuario.empresa_id == current_user.empresa_id,
+        Usuario.role.in_(['agente', 'admin_empresa'])
+    ).count()
+
+    if total_usuarios >= limite_agentes:
+        flash(f'O limite de {limite_agentes} usuários para o plano "{plano_da_empresa.capitalize()}" foi atingido.', 'danger')
+        return redirect(url_for('management.listar_usuarios'))
+
     if request.method == 'POST':
         nome = request.form.get('nome')
         email = request.form.get('email')
@@ -38,12 +60,14 @@ def novo_usuario():
         if Usuario.query.filter_by(email=email).first():
             flash(f'O email "{email}" já está em uso.', 'danger')
             return render_template('management/form_usuario.html', page_title="Novo Usuário", form_data=request.form)
+        
         novo_usuario = Usuario(nome=nome, email=email, role=role, empresa_id=current_user.empresa_id)
         novo_usuario.set_password(senha)
         db.session.add(novo_usuario)
         db.session.commit()
         flash(f'Usuário "{nome}" criado com sucesso!', 'success')
         return redirect(url_for('management.listar_usuarios'))
+        
     return render_template('management/form_usuario.html', page_title="Novo Usuário")
 
 @bp.route('/usuarios/<int:id>/editar', methods=['GET', 'POST'])
