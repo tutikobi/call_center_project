@@ -7,6 +7,7 @@ from functools import wraps
 import re
 from datetime import datetime
 import requests
+from .management import PLAN_LIMITS # --- IMPORTAÇÃO CORRIGIDA AQUI ---
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -28,8 +29,7 @@ def get_google_reviews(id):
     sample_reviews = {
         "reviews": [
             { "reviewer": {"displayName": "Gabriela Bareta"}, "starRating": "FIVE", "comment": "Não tenho dúvidas que, colocar meu imóvel para alugar na Barcellos, foi a melhor escolha...", "reply": { "comment": "Queremos expressar nossa mais profunda gratidão..."}},
-            { "reviewer": {"displayName": "Carlos Silva"}, "starRating": "ONE", "comment": "Péssima experiência. O atendimento demorou e não resolveram o meu problema.", "reply": None},
-            { "reviewer": {"displayName": "Ana Paula"}, "starRating": "FOUR", "comment": "O serviço é bom, mas a comunicação poderia ser um pouco mais clara.", "reply": { "comment": "Obrigado pelo seu feedback, Ana Paula!"}}
+            { "reviewer": {"displayName": "Carlos Silva"}, "starRating": "ONE", "comment": "Péssima experiência. O atendimento demorou e não resolveram o meu problema.", "reply": None}
         ], "totalReviewCount": 215
     }
     return jsonify(sample_reviews)
@@ -42,10 +42,8 @@ def buscar_dados_reputacao(id):
     empresa = Empresa.query.get_or_404(id)
     api_key = current_app.config.get('GOOGLE_PLACES_API_KEY')
     place_id = empresa.google_place_id
-    if not api_key or api_key == 'SUA_CHAVE_API_AQUI':
-        return jsonify({'error': 'A chave da API do Google não foi configurada no sistema.'}), 500
-    if not place_id:
-        return jsonify({'error': 'O "Google Place ID" desta empresa não foi configurado.'}), 400
+    if not api_key or api_key == 'SUA_CHAVE_API_AQUI': return jsonify({'error': 'A chave da API do Google não foi configurada no sistema.'}), 500
+    if not place_id: return jsonify({'error': 'O "Google Place ID" desta empresa não foi configurado.'}), 400
     url = f"https://maps.googleapis.com/maps/api/place/details/json?place_id={place_id}&fields=rating,user_ratings_total&key={api_key}&language=pt_BR"
     dados_encontrados = {'nota_google': None, 'total_avaliacoes_google': None}
     try:
@@ -68,13 +66,12 @@ def buscar_dados_reputacao(id):
 def detalhes_empresa(id):
     empresa = Empresa.query.get_or_404(id)
     ultimo_registro = empresa.historico_reputacao[0] if empresa.historico_reputacao else None
+    limite_plano = PLAN_LIMITS.get(empresa.plano, 0)
     historico_reverso = reversed(empresa.historico_reputacao)
     labels = [h.data_registro.strftime('%d/%m/%Y') for h in historico_reverso]
     historico_reverso = reversed(empresa.historico_reputacao)
     notas_google = [h.nota_google for h in historico_reverso if h.nota_google is not None]
     chart_data = {'labels': labels, 'datasets': [{'label': 'Nota Google', 'data': notas_google, 'borderColor': '#4285F4', 'backgroundColor': 'rgba(66, 133, 244, 0.2)', 'fill': True, 'tension': 0.1}]}
-    from ..management import PLAN_LIMITS
-    limite_plano = PLAN_LIMITS.get(empresa.plano, 0)
     return render_template('admin/detalhes_empresa.html', empresa=empresa, page_title=f"Dashboard de Reputação: {empresa.nome_empresa}", ultimo_registro=ultimo_registro, chart_data=chart_data, limite_plano=limite_plano)
 
 @bp.route('/historico/<int:id>/adicionar_registro', methods=['POST'])

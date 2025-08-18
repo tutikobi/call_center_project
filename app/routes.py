@@ -110,6 +110,17 @@ def atribuir_conversa(conversa_id):
     flash(f'Conversa com {conversa.nome_cliente} foi atribuída a {agente_nome}.', 'success')
     return redirect(url_for('routes.conversas'))
 
+# --- ROTA QUE FALTAVA ---
+@bp.route("/emails")
+@login_required
+def emails():
+    # Lógica para verificar se a empresa tem acesso a esta funcionalidade
+    if current_user.empresa.plano not in ['medio', 'pro', 'premium']:
+        flash("O seu plano não tem acesso à funcionalidade de Email.", "warning")
+        return redirect(url_for('routes.dashboard'))
+        
+    return render_template("emails.html", page_title="Caixa de Email")
+
 @bp.route("/relatorios", methods=['GET', 'POST'])
 @login_required
 def relatorios():
