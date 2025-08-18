@@ -19,6 +19,7 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# --- ROTAS DE REPUTAÇÃO ---
 @bp.route('/historico/<int:id>/get_google_reviews')
 @login_required
 @admin_required
@@ -41,8 +42,10 @@ def buscar_dados_reputacao(id):
     empresa = Empresa.query.get_or_404(id)
     api_key = current_app.config.get('GOOGLE_PLACES_API_KEY')
     place_id = empresa.google_place_id
-    if not api_key or api_key == 'SUA_CHAVE_API_AQUI': return jsonify({'error': 'A chave da API do Google não foi configurada no sistema.'}), 500
-    if not place_id: return jsonify({'error': 'O "Google Place ID" desta empresa não foi configurado.'}), 400
+    if not api_key or api_key == 'SUA_CHAVE_API_AQUI':
+        return jsonify({'error': 'A chave da API do Google não foi configurada no sistema.'}), 500
+    if not place_id:
+        return jsonify({'error': 'O "Google Place ID" desta empresa não foi configurado.'}), 400
     url = f"https://maps.googleapis.com/maps/api/place/details/json?place_id={place_id}&fields=rating,user_ratings_total&key={api_key}&language=pt_BR"
     dados_encontrados = {'nota_google': None, 'total_avaliacoes_google': None}
     try:
@@ -70,7 +73,9 @@ def detalhes_empresa(id):
     historico_reverso = reversed(empresa.historico_reputacao)
     notas_google = [h.nota_google for h in historico_reverso if h.nota_google is not None]
     chart_data = {'labels': labels, 'datasets': [{'label': 'Nota Google', 'data': notas_google, 'borderColor': '#4285F4', 'backgroundColor': 'rgba(66, 133, 244, 0.2)', 'fill': True, 'tension': 0.1}]}
-    return render_template('admin/detalhes_empresa.html', empresa=empresa, page_title=f"Dashboard de Reputação: {empresa.nome_empresa}", ultimo_registro=ultimo_registro, chart_data=chart_data)
+    from ..management import PLAN_LIMITS
+    limite_plano = PLAN_LIMITS.get(empresa.plano, 0)
+    return render_template('admin/detalhes_empresa.html', empresa=empresa, page_title=f"Dashboard de Reputação: {empresa.nome_empresa}", ultimo_registro=ultimo_registro, chart_data=chart_data, limite_plano=limite_plano)
 
 @bp.route('/historico/<int:id>/adicionar_registro', methods=['POST'])
 @login_required
