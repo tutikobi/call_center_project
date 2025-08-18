@@ -8,16 +8,11 @@
     <a href="{{ url_for('admin.historico_empresas') }}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-2"></i> Voltar</a>
 </div>
 
-{% if not empresa.monitorar_reputacao %}
-<div class="alert alert-warning">O monitoramento de reputação não está ativo. Ative na <a href="{{ url_for('admin.editar_empresa', id=empresa.id) }}">página de edição</a>.</div>
-{% else %}
-
 <div class="row">
     <div class="col-lg-4 mb-4">
         <div class="card h-100">
-            <div class="card-header"><h5 class="mb-0">Situação Atual</h5></div>
+            <div class="card-header"><h5 class="mb-0">Situação Atual (Google)</h5></div>
             <div class="card-body text-center d-flex flex-column justify-content-center">
-                {% set ultimo_registro = empresa.historico_reputacao[0] if empresa.historico_reputacao else none %}
                 <p class="display-4">{{ '%.1f'|format(ultimo_registro.nota_google) if ultimo_registro and ultimo_registro.nota_google is not none else 'N/A' }}</p>
                 <p class="mb-0 text-muted">{{ ultimo_registro.total_avaliacoes_google if ultimo_registro and ultimo_registro.total_avaliacoes_google is not none else 'N/A' }} avaliações totais</p>
                 <small>Último registro: {{ ultimo_registro.data_registro.strftime('%d/%m/%Y') if ultimo_registro else 'Nunca' }}</small>
@@ -26,34 +21,33 @@
     </div>
     <div class="col-lg-8 mb-4">
         <div class="card h-100">
-            <div class="card-header"><h5 class="mb-0">Análise de Desempenho (vs. registo anterior)</h5></div>
+            <div class="card-header"><h5 class="mb-0">Plano e Agentes</h5></div>
             <div class="card-body">
-                {% if empresa.historico_reputacao|length < 2 %}
-                <p class="text-muted text-center pt-5">Adicione pelo menos dois registos para ver a análise de desempenho.</p>
-                {% else %}
-                {% set ultimo = empresa.historico_reputacao[0] %}
-                {% set penultimo = empresa.historico_reputacao[1] %}
-                
-                {% set variacao_nota = (ultimo.nota_google or 0) - (penultimo.nota_google or 0) %}
-                {% set novas_avaliacoes = (ultimo.total_avaliacoes_google or 0) - (penultimo.total_avaliacoes_google or 0) %}
-                
-                <div class="row text-center">
-                    <div class="col-6 border-end">
-                        <h6 class="text-muted">Variação da Nota</h6>
-                        {% if variacao_nota > 0 %}
-                            <p class="display-5 text-success">+{{ '%.2f'|format(variacao_nota) }} <i class="fas fa-arrow-up"></i></p>
-                        {% elif variacao_nota < 0 %}
-                            <p class="display-5 text-danger">{{ '%.2f'|format(variacao_nota) }} <i class="fas fa-arrow-down"></i></p>
-                        {% else %}
-                            <p class="display-5 text-muted">0.00 <i class="fas fa-arrows-alt-h"></i></p>
-                        {% endif %}
+                <div class="row">
+                    <div class="col-md-5 border-end">
+                        <h6 class="text-muted">Plano Contratado</h6>
+                        <h4>{{ empresa.plano | capitalize }}</h4>
+                        <div class="progress mt-2" style="height: 20px;">
+                            <div class="progress-bar" role="progressbar" style="width: {{ (empresa.usuarios|length / limite_plano * 100)|int }}%;" aria-valuenow="{{ empresa.usuarios|length }}" aria-valuemin="0" aria-valuemax="{{ limite_plano }}">
+                                {{ empresa.usuarios|length }} / {{ limite_plano }}
+                            </div>
+                        </div>
+                        <small class="text-muted">{{ empresa.usuarios|length }} de {{ limite_plano }} agentes cadastrados.</small>
                     </div>
-                    <div class="col-6">
-                        <h6 class="text-muted">Novas Avaliações</h6>
-                        <p class="display-5 {% if novas_avaliacoes >= 0 %}text-success{% else %}text-danger{% endif %}">{% if novas_avaliacoes >= 0 %}+{% endif %}{{ novas_avaliacoes }}</p>
+                    <div class="col-md-7">
+                        <h6 class="text-muted">Agentes Cadastrados</h6>
+                        <ul class="list-group list-group-flush" style="max-height: 100px; overflow-y: auto;">
+                            {% for usuario in empresa.usuarios %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center p-1">
+                                {{ usuario.nome }}
+                                <span class="badge bg-secondary">{{ usuario.role | replace('_', ' ') | title }}</span>
+                            </li>
+                            {% else %}
+                            <li class="list-group-item p-1">Nenhum agente cadastrado.</li>
+                            {% endfor %}
+                        </ul>
                     </div>
                 </div>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -84,109 +78,7 @@
     </div>
 </div>
 
-{% endif %}
 {% endblock %}
 
 {% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const ctx = document.getElementById('graficoEvolucao');
-    if (ctx) {
-        const chartData = JSON.parse('{{ chart_data | tojson | safe }}');
-        if (chartData.labels.length < 2) {
-            ctx.parentElement.innerHTML = '<p class="text-center text-muted mt-5">Adicione pelo menos dois registros para visualizar a evolução.</p>';
-        } else {
-            new Chart(ctx, {
-                type: 'line',
-                data: chartData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            suggestedMin: 3,
-                            suggestedMax: 5
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: true
-                        }
-                    }
-                }
-            });
-        }
-    }
-
-    const btnAtualizar = document.getElementById('btnAtualizarReviews');
-    const reviewsContainer = document.getElementById('reviews-container');
-
-    btnAtualizar.addEventListener('click', function() {
-        const url = this.dataset.url;
-        const spinner = this.querySelector('.spinner-border');
-        const icon = this.querySelector('i');
-        
-        spinner.classList.remove('d-none');
-        icon.classList.add('d-none');
-        this.disabled = true;
-        reviewsContainer.innerHTML = '<p class="text-center text-muted">A carregar...</p>';
-
-        fetch(url)
-            .then(response => {
-                if (!response.ok) { throw new Error('Falha na resposta da rede'); }
-                return response.json();
-            })
-            .then(data => {
-                reviewsContainer.innerHTML = '';
-                if (data.reviews && data.reviews.length > 0) {
-                    data.reviews.forEach(review => {
-                        reviewsContainer.innerHTML += renderReview(review);
-                    });
-                } else {
-                    reviewsContainer.innerHTML = '<p class="text-center text-muted">Nenhuma avaliação encontrada.</p>';
-                }
-            })
-            .catch(error => {
-                console.error("Erro:", error);
-                reviewsContainer.innerHTML = `<p class="text-center text-danger">Erro ao carregar avaliações. (Detalhe: ${error.message})</p>`;
-            })
-            .finally(() => {
-                spinner.classList.add('d-none');
-                icon.classList.remove('d-none');
-                this.disabled = false;
-            });
-    });
-
-    function renderReview(review) {
-        const starRatingMap = { 'FIVE': 5, 'FOUR': 4, 'THREE': 3, 'TWO': 2, 'ONE': 1 };
-        const rating = starRatingMap[review.starRating] || 0;
-        let stars = '';
-        for (let i = 1; i <= 5; i++) {
-            stars += `<i class="fas fa-star ${i <= rating ? 'text-warning' : 'text-muted'}"></i>`;
-        }
-        
-        let replyHtml = '';
-        if (review.reply) {
-            replyHtml = `
-                <div class="mt-3 p-3 bg-light rounded">
-                    <strong>Resposta do proprietário:</strong>
-                    <p class="mb-0 small">${review.reply.comment}</p>
-                </div>
-            `;
-        }
-
-        return `
-            <div class="border-bottom pb-3 mb-3">
-                <div class="d-flex align-items-center mb-2">
-                    <strong class="me-3">${review.reviewer.displayName}</strong>
-                    <div class="text-warning">${stars}</div>
-                </div>
-                <p class="mb-1">${review.comment}</p>
-                ${replyHtml}
-            </div>
-        `;
-    }
-});
-</script>
-{% endblock %}
+    {% endblock %}
