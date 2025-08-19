@@ -322,4 +322,99 @@ body {
         height: 50px;
         font-size: 20px;
     }
+
+
+}
+/* ... (todo o seu CSS existente) ... */
+
+/* --- ESTILOS PARA A JANELA DE CHAT DO WHATSAPP --- */
+.whatsapp-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: #e5ddd5;
+}
+.whatsapp-header {
+    padding: 10px 15px;
+    background-color: #f0f2f5;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+}
+.contact-info {
+    display: flex;
+    align-items: center;
+}
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #6c757d;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 15px;
+}
+.contact-details h6 {
+    margin: 0;
+    font-weight: 600;
+}
+.contact-details .status {
+    font-size: 0.8rem;
+    color: #667781;
+}
+.whatsapp-messages {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+.message {
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    max-width: 70%;
+    position: relative;
+}
+.message p {
+    margin: 0;
+    word-wrap: break-word;
+}
+.message.sent {
+    background-color: #dcf8c6;
+    align-self: flex-end;
+}
+.message.received {
+    background-color: #fff;
+    align-self: flex-start;
+}
+.timestamp {
+    font-size: 0.7rem;
+    color: #999;
+    display: block;
+    text-align: right;
+    margin-top: 5px;
+}
+.whatsapp-input {
+    padding: 10px;
+    background-color: #f0f2f5;
+    display: flex;
+    align-items: center;
+}
+.whatsapp-input input {
+    flex-grow: 1;
+    border-radius: 20px;
+    border: 1px solid #ccc;
+    padding: 8px 15px;
+}
+.whatsapp-input .send-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #54656f;
+    margin-left: 10px;
+    cursor: pointer;
 }

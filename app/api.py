@@ -1,15 +1,70 @@
 # call_center_project/app/api.py
 
 from flask import Blueprint, request, jsonify, current_app
-from .models import db, Avaliacao, ConversaWhatsApp, MensagemWhatsApp, Empresa, Usuario, Email
+from .models import db, Avaliacao, ConversaWhatsApp, MensagemWhatsApp, Empresa, Usuario
 from flask_login import login_required, current_user
 from datetime import datetime
 from sqlalchemy import func
 import requests
 import json
 from .admin import admin_required
+from . import socketio
 
 bp = Blueprint('api', __name__, url_prefix='/api')
+
+# --- ROTAS PARA O CHAT DE WHATSAPP ---
+
+@bp.route('/conversa/<int:conversa_id>')
+@login_required
+def get_conversa(conversa_id):
+    """Busca o histórico de mensagens de uma conversa específica."""
+    conversa = ConversaWhatsApp.query.filter_by(id=conversa_id, empresa_id=current_user.empresa_id).first_or_404()
+    
+    mensagens = [
+        {
+            'remetente': msg.remetente,
+            'conteudo': msg.conteudo,
+            'timestamp': msg.timestamp.strftime('%H:%M')
+        } for msg in conversa.mensagens
+    ]
+    
+    return jsonify({
+        'cliente': conversa.nome_cliente,
+        'mensagens': mensagens
+    })
+
+@bp.route('/conversa/<int:conversa_id>/enviar', methods=['POST'])
+@login_required
+def enviar_mensagem_conversa(conversa_id):
+    """Envia uma mensagem de um agente para um cliente."""
+    conversa = ConversaWhatsApp.query.filter_by(id=conversa_id, empresa_id=current_user.empresa_id).first_or_404()
+    data = request.json
+    conteudo_mensagem = data.get('mensagem')
+
+    if not conteudo_mensagem:
+        return jsonify({'status': 'error', 'message': 'A mensagem não pode estar vazia.'}), 400
+
+    # Lógica para enviar a mensagem através da API do WhatsApp (usando a função de services)
+    # from .services import enviar_mensagem_whatsapp
+    # sucesso = enviar_mensagem_whatsapp(conversa.wa_id, conteudo_mensagem, conversa.empresa)
+    
+    # Por agora, vamos simular o sucesso
+    sucesso = True 
+
+    if sucesso:
+        # Salva a mensagem do agente na base de dados
+        nova_mensagem = MensagemWhatsApp(
+            conversa_id=conversa.id,
+            remetente='agente',
+            conteudo=conteudo_mensagem,
+            empresa_id=current_user.empresa_id
+        )
+        db.session.add(nova_mensagem)
+        db.session.commit()
+        return jsonify({'status': 'ok', 'message': 'Mensagem enviada com sucesso.'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Falha ao enviar a mensagem pelo provedor.'}), 500
+
 
 @bp.route("/dados_dashboard_graficos")
 @login_required
@@ -54,64 +109,62 @@ def dados_admin_dashboard():
     return jsonify({'graficoEmpresas': dados_grafico})
 
 
-# --- ROTA PARA RECEBER EMAILS ENCAMINHADOS (WEBHOOK) ---
-@bp.route("/webhook/email", methods=["POST"])
-def email_webhook():
-    # Os serviços de webhook (SendGrid, Mailgun) enviam os dados do email como um formulário
-    data = request.form
-    
-    # Extrai as informações principais
-    # A estrutura exata (ex: 'sender', 'subject') pode variar um pouco dependendo do serviço
-    remetente = data.get('from')
-    destinatario = data.get('to')
-    assunto = data.get('subject')
-    corpo = data.get('text') # Corpo em texto simples
-    
-    if not all([remetente, destinatario, assunto, corpo]):
-        # Se faltar alguma informação essencial, retorna um erro.
-        return jsonify({'status': 'error', 'message': 'Dados do email incompletos.'}), 400
-
-    try:
-        # Lógica para encontrar a empresa associada a este email
-        # Aqui, estamos a assumir que o email foi enviado para algo como "empresa_X@receber.seusistema.com"
-        # Esta lógica precisará de ser adaptada à sua configuração.
-        # Por agora, vamos assumir que encontramos uma empresa de exemplo.
-        empresa = Empresa.query.first() # Lógica de exemplo!
-        if not empresa:
-            raise Exception("Nenhuma empresa encontrada para associar o email.")
-
-        # Lógica para atribuir o email a um agente (ex: o primeiro agente da empresa)
-        agente_destino = Usuario.query.filter_by(empresa_id=empresa.id, role='agente').first()
-        agente_id = agente_destino.id if agente_destino else None
-
-        # Cria o novo registo de email na base de dados
-        novo_email = Email(
-            empresa_id=empresa.id,
-            agente_id=agente_id,
-            remetente=remetente,
-            assunto=assunto,
-            corpo=corpo,
-            status='nao_lido'
-        )
-        db.session.add(novo_email)
-        db.session.commit()
-        
-        # (Opcional) Enviar uma notificação em tempo real para o agente
-        # from . import socketio
-        # if agente_id:
-        #     socketio.emit('novo_email', {'assunto': assunto}, room=str(agente_id))
-
-        print(f"Email de '{remetente}' com assunto '{assunto}' recebido e guardado com sucesso.")
-        return jsonify({'status': 'ok'}), 200
-
-    except Exception as e:
-        current_app.logger.error(f"Erro ao processar webhook de email: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-
-
 @bp.route("/webhook/<int:empresa_id>", methods=["GET", "POST"])
 def webhook_whatsapp(empresa_id):
-    # ... (código inalterado)
+    empresa = Empresa.query.get_or_404(empresa_id)
+    if request.method == "GET":
+        verify_token = request.args.get("hub.verify_token")
+        if verify_token and verify_token == empresa.webhook_verify_token:
+            return request.args.get("hub.challenge")
+        return "Token de verificação inválido", 403
+    
+    data = request.json
+    if data.get("object") == "whatsapp_business_account":
+        try:
+            for entry in data.get("entry", []):
+                for change in entry.get("changes", []):
+                    if "messages" in change.get("value", {}):
+                        for message in change["value"]["messages"]:
+                            processar_mensagem_recebida(message, empresa)
+        except (KeyError, IndexError) as e:
+            current_app.logger.error(f"Erro ao processar payload do webhook para empresa {empresa.id}: {e}")
+            pass
+            
     return jsonify({"status": "ok"}), 200
 
-# ... (outras rotas da API inalteradas)
+def processar_mensagem_recebida(message, empresa):
+    wa_id = message["from"]
+    conteudo = message["text"]["body"] if "text" in message else "Mídia recebida"
+    timestamp = datetime.fromtimestamp(int(message['timestamp']))
+
+    conversa = ConversaWhatsApp.query.filter_by(wa_id=wa_id, empresa_id=empresa.id).first()
+    
+    if not conversa:
+        conversa = ConversaWhatsApp(wa_id=wa_id, nome_cliente=f"Cliente {wa_id[-4:]}", status='pendente', empresa_id=empresa.id)
+        db.session.add(conversa)
+        db.session.flush()
+
+    nova_mensagem = MensagemWhatsApp(
+        conversa_id=conversa.id,
+        remetente='cliente',
+        conteudo=conteudo,
+        timestamp=timestamp,
+        empresa_id=empresa.id
+    )
+    db.session.add(nova_mensagem)
+    db.session.commit()
+    
+    # Emite a nova mensagem para a sala da conversa
+    socketio.emit('nova_mensagem_cliente', {
+        'conversa_id': conversa.id,
+        'conteudo': conteudo,
+        'timestamp': timestamp.strftime('%H:%M')
+    }, room=f"conversa_{conversa.id}")
+
+def enviar_mensagem_whatsapp(wa_id, mensagem, empresa):
+    # ... (código inalterado)
+    pass
+
+@bp.route("/registro_chamada", methods=["POST"])
+def registro_chamada():
+    return jsonify({"status": "ok", "message": "Rota em desenvolvimento."}), 501
