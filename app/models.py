@@ -32,6 +32,7 @@ class Empresa(db.Model):
     conversas = db.relationship('ConversaWhatsApp', backref='empresa', lazy=True, cascade="all, delete-orphan")
     tickets_suporte = db.relationship('TicketSuporte', backref='empresa', lazy=True, cascade="all, delete-orphan")
     historico_reputacao = db.relationship('ReputacaoHistorico', backref='empresa', lazy=True, cascade="all, delete-orphan", order_by='ReputacaoHistorico.data_registro.desc()')
+    emails = db.relationship('Email', backref='empresa', lazy=True, cascade="all, delete-orphan")
 
 class ReputacaoHistorico(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -47,6 +48,7 @@ class Usuario(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
+    whatsapp_numero = db.Column(db.String(20))
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='agente')
     status = db.Column(db.String(20), nullable=False, default='ativo')
@@ -54,12 +56,32 @@ class Usuario(db.Model, UserMixin):
     avaliacoes = db.relationship('Avaliacao', backref='agente', lazy=True)
     tickets_enviados = db.relationship('TicketSuporte', backref='remetente', lazy=True)
     anotacoes_criadas = db.relationship('AnotacaoTicket', backref='autor', lazy=True)
+    emails = db.relationship('Email', backref='agente', lazy=True)
+    notificacoes = db.relationship('Notificacao', backref='usuario', lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+class Email(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
+    agente_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
+    remetente = db.Column(db.String(150), nullable=False)
+    assunto = db.Column(db.String(200), nullable=False)
+    corpo = db.Column(db.Text)
+    data_recebimento = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(50), default='nao_lido') # nao_lido, lido, respondido
+
+class Notificacao(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    remetente_nome = db.Column(db.String(100))
+    mensagem = db.Column(db.Text, nullable=False)
+    lida = db.Column(db.Boolean, default=False)
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Avaliacao(db.Model):
     id = db.Column(db.Integer, primary_key=True)

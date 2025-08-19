@@ -28,7 +28,7 @@
                 {% endif %}
 
                 {% if current_user.empresa.plano in ['medio', 'pro', 'premium'] %}
-                <a class="nav-link {% if request.endpoint == 'routes.emails' %}active{% endif %}" href="{{ url_for('routes.emails') }}">
+                <a class="nav-link {% if request.endpoint == 'routes.emails' or request.endpoint == 'routes.caixa_email_agente' %}active{% endif %}" href="{{ url_for('routes.emails') }}">
                     <i class="fas fa-envelope fa-fw me-2"></i> Emails
                 </a>
                 {% endif %}

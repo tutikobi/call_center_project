@@ -7,7 +7,7 @@ from functools import wraps
 import re
 from datetime import datetime
 import requests
-from .management import PLAN_LIMITS # --- IMPORTAÇÃO CORRIGIDA AQUI ---
+from .management import PLAN_LIMITS
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -42,8 +42,10 @@ def buscar_dados_reputacao(id):
     empresa = Empresa.query.get_or_404(id)
     api_key = current_app.config.get('GOOGLE_PLACES_API_KEY')
     place_id = empresa.google_place_id
-    if not api_key or api_key == 'SUA_CHAVE_API_AQUI': return jsonify({'error': 'A chave da API do Google não foi configurada no sistema.'}), 500
-    if not place_id: return jsonify({'error': 'O "Google Place ID" desta empresa não foi configurado.'}), 400
+    if not api_key or api_key == 'SUA_CHAVE_API_AQUI':
+        return jsonify({'error': 'A chave da API do Google não foi configurada no sistema.'}), 500
+    if not place_id:
+        return jsonify({'error': 'O "Google Place ID" desta empresa não foi configurado.'}), 400
     url = f"https://maps.googleapis.com/maps/api/place/details/json?place_id={place_id}&fields=rating,user_ratings_total&key={api_key}&language=pt_BR"
     dados_encontrados = {'nota_google': None, 'total_avaliacoes_google': None}
     try:
