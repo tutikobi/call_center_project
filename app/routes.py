@@ -1,10 +1,10 @@
 # call_center_project/app/routes.py
 
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify, flash
-from .models import db, Avaliacao, ConversaWhatsApp, Usuario, Notificacao
+from .models import db, Avaliacao, ConversaWhatsApp, Usuario, Notificacao, Email
 from flask_login import login_required, current_user
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 import random
 # A importação 'from . import socketio' foi REMOVIDA do topo do ficheiro
 
@@ -140,17 +140,17 @@ def caixa_email_agente(agente_id):
     else:
         return redirect(url_for('routes.dashboard'))
 
-    hoje = datetime.utcnow().date()
-    emails_recebidos_hoje = random.randint(15, 30)
-    emails_respondidos = random.randint(5, emails_recebidos_hoje)
-    emails_nao_lidos = random.randint(3, 10)
+    today_start = datetime.combine(date.today(), datetime.min.time())
     
-    lista_de_emails = [
-        {'remetente': 'cliente1@example.com', 'assunto': 'Dúvida sobre o contrato 123', 'status': 'nao_lido'},
-        {'remetente': 'fornecedor@example.com', 'assunto': 'Proposta de parceria', 'status': 'lido'},
-        {'remetente': 'cliente2@example.com', 'assunto': 'Re: Problema com a fatura', 'status': 'respondido'},
-        {'remetente': 'cliente3@example.com', 'assunto': 'URGENTE: Ajuda necessária', 'status': 'nao_lido'},
-    ]
+    emails_recebidos_hoje = Email.query.filter(
+        Email.agente_id == agente.id,
+        Email.data_recebimento >= today_start
+    ).count()
+
+    emails_respondidos = Email.query.filter_by(agente_id=agente.id, status='respondido').count()
+    emails_nao_lidos = Email.query.filter_by(agente_id=agente.id, status='nao_lido').count()
+    
+    lista_de_emails = Email.query.filter_by(agente_id=agente.id).order_by(Email.data_recebimento.desc()).all()
 
     return render_template("caixa_email_agente.html", 
                            page_title=f"Caixa de Entrada de {agente.nome}",
@@ -159,6 +159,24 @@ def caixa_email_agente(agente_id):
                            emails_respondidos=emails_respondidos,
                            emails_nao_lidos=emails_nao_lidos,
                            lista_de_emails=lista_de_emails)
+
+@bp.route("/email/<int:email_id>")
+@login_required
+def ver_email(email_id):
+    query = Email.query.filter_by(id=email_id)
+    email = query.filter(Email.empresa_id == current_user.empresa_id).first_or_404()
+    
+    if current_user.role == 'agente' and email.agente_id != current_user.id:
+        flash("Acesso não permitido.", "danger")
+        return redirect(url_for('routes.emails'))
+
+    if email.status == 'nao_lido':
+        email.status = 'lido'
+        db.session.commit()
+
+    return render_template("ver_email.html", 
+                           page_title=f"Email: {email.assunto}",
+                           email=email)
 
 @bp.route("/emails/agente/<int:agente_id>/alertar")
 @login_required
@@ -182,10 +200,31 @@ def alertar_agente(agente_id):
     db.session.add(nova_notificacao)
     db.session.commit()
 
-    socketio.emit('nova_notificacao', {'mensagem': mensagem}, room=str(agente.id))
+    socketio.emit('nova_notificacao', {'remetente': current_user.nome, 'mensagem': mensagem}, room=str(agente.id))
     
     flash(f"Alerta sobre o email '{assunto_email}' enviado para {agente.nome}.", "info")
     return redirect(url_for('routes.caixa_email_agente', agente_id=agente.id))
+
+@bp.route('/notificacoes/nao_lidas')
+@login_required
+def get_notificacoes_nao_lidas():
+    notificacoes = Notificacao.query.filter_by(usuario_id=current_user.id, lida=False).order_by(Notificacao.data_criacao.desc()).all()
+    resultado = [
+        {'id': n.id, 'mensagem': n.mensagem, 'remetente': n.remetente_nome} 
+        for n in notificacoes
+    ]
+    return jsonify(resultado)
+
+@bp.route('/notificacoes/marcar_como_lidas', methods=['POST'])
+@login_required
+def marcar_como_lidas():
+    try:
+        Notificacao.query.filter_by(usuario_id=current_user.id, lida=False).update({'lida': True})
+        db.session.commit()
+        return jsonify({'status': 'ok'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @bp.route("/relatorios", methods=['GET', 'POST'])
 @login_required

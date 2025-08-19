@@ -1,13 +1,15 @@
 # call_center_project/app/management.py
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from .models import db, Usuario, Empresa, TicketSuporte
 from flask_login import login_required, current_user
 from functools import wraps
+from .ai_service import load_knowledge_base, get_ai_response
 
 bp = Blueprint('management', __name__, url_prefix='/management' )
 
-# --- LIMITES DE PLANOS ATUALIZADOS ---
+knowledge_base = load_knowledge_base()
+
 PLAN_LIMITS = {
     'basico': 5,
     'medio': 10,
@@ -34,16 +36,10 @@ def listar_usuarios():
 @login_required
 @empresa_admin_required
 def novo_usuario():
-    # --- LÓGICA DE VERIFICAÇÃO DE LIMITE ATIVADA ---
     empresa_atual = current_user.empresa
     plano_da_empresa = empresa_atual.plano
     limite_agentes = PLAN_LIMITS.get(plano_da_empresa, 0)
-
-    # Conta apenas os "agentes" e "admin_empresa" para o limite
-    total_usuarios = Usuario.query.filter(
-        Usuario.empresa_id == current_user.empresa_id,
-        Usuario.role.in_(['agente', 'admin_empresa'])
-    ).count()
+    total_usuarios = Usuario.query.filter(Usuario.empresa_id == current_user.empresa_id, Usuario.role.in_(['agente', 'admin_empresa'])).count()
 
     if total_usuarios >= limite_agentes:
         flash(f'O limite de {limite_agentes} usuários para o plano "{plano_da_empresa.capitalize()}" foi atingido.', 'danger')
@@ -52,16 +48,19 @@ def novo_usuario():
     if request.method == 'POST':
         nome = request.form.get('nome')
         email = request.form.get('email')
+        whatsapp = request.form.get('whatsapp_numero')
         senha = request.form.get('senha')
         role = request.form.get('role', 'agente')
-        if not all([nome, email, senha]):
+        
+        if not all([nome, email, senha, whatsapp]):
             flash('Todos os campos são obrigatórios.', 'warning')
-            return render_template('management/form_usuario.html', page_title="Novo Usuário")
+            return render_template('management/form_usuario.html', page_title="Novo Usuário", form_data=request.form)
+            
         if Usuario.query.filter_by(email=email).first():
             flash(f'O email "{email}" já está em uso.', 'danger')
             return render_template('management/form_usuario.html', page_title="Novo Usuário", form_data=request.form)
         
-        novo_usuario = Usuario(nome=nome, email=email, role=role, empresa_id=current_user.empresa_id)
+        novo_usuario = Usuario(nome=nome, email=email, whatsapp_numero=whatsapp, role=role, empresa_id=current_user.empresa_id)
         novo_usuario.set_password(senha)
         db.session.add(novo_usuario)
         db.session.commit()
@@ -78,21 +77,25 @@ def editar_usuario(id):
     if usuario.empresa_id != current_user.empresa_id:
         flash("Acesso negado.", "danger")
         return redirect(url_for('management.listar_usuarios'))
+
     if request.method == 'POST':
         usuario.nome = request.form.get('nome')
-        usuario.email = request.form.get('email')
         usuario.role = request.form.get('role')
-        email_existente = Usuario.query.filter(Usuario.id != id, Usuario.email == usuario.email).first()
-        if email_existente:
-            flash(f'O email "{usuario.email}" já pertence a outro usuário.', 'danger')
-            return render_template('management/form_usuario.html', page_title=f"Editar Usuário: {usuario.nome}", usuario=usuario, is_edit=True)
+
+        if current_user.role != 'super_admin':
+            if usuario.email != request.form.get('email') or usuario.whatsapp_numero != request.form.get('whatsapp_numero'):
+                flash("Email e WhatsApp não podem ser alterados. Por favor, abra um ticket de suporte.", "warning")
+                return redirect(url_for('management.editar_usuario', id=id))
+        
         nova_senha = request.form.get('senha')
         if nova_senha:
             usuario.set_password(nova_senha)
             flash('Senha atualizada com sucesso.', 'info')
+
         db.session.commit()
         flash(f'Dados do usuário "{usuario.nome}" atualizados com sucesso!', 'success')
         return redirect(url_for('management.listar_usuarios'))
+        
     return render_template('management/form_usuario.html', page_title=f"Editar Usuário: {usuario.nome}", usuario=usuario, is_edit=True)
 
 @bp.route('/usuarios/<int:id>/toggle_status', methods=['POST'])
@@ -145,27 +148,34 @@ def configuracoes():
         return redirect(url_for('management.configuracoes'))
     return render_template('management/configuracoes.html', empresa=empresa, page_title="Configurações da API")
 
+@bp.route('/suporte/sugestao_ia', methods=['POST'])
+@login_required
+def sugestao_ia():
+    if not request.json or 'descricao' not in request.json:
+        return jsonify({'sugestao': ''})
+    descricao = request.json['descricao']
+    if len(descricao) < 20:
+        return jsonify({'sugestao': ''})
+    resposta = get_ai_response(descricao, knowledge_base)
+    return jsonify({'sugestao': resposta or ''})
+
 @bp.route('/suporte/novo_ticket', methods=['POST'])
 @login_required
 def novo_ticket():
     if current_user.role == 'super_admin':
         flash("O super admin não pode abrir tickets.", "danger")
         return redirect(request.referrer or url_for('routes.dashboard'))
-
     assunto = request.form.get('assunto')
     descricao = request.form.get('descricao')
-
     if not all([assunto, descricao]):
         flash("Todos os campos do ticket são obrigatórios.", "warning")
         return redirect(request.referrer or url_for('routes.dashboard'))
-
     if assunto in ["Suporte Técnico", "Problema em Relatórios"]:
         prioridade = "alta"
     elif assunto == "Emissão de Fatura":
         prioridade = "media"
     else:
         prioridade = "baixa"
-
     novo_ticket = TicketSuporte(
         assunto=assunto,
         descricao=descricao,
@@ -175,6 +185,5 @@ def novo_ticket():
     )
     db.session.add(novo_ticket)
     db.session.commit()
-
     flash("Seu ticket de suporte foi enviado com sucesso! Entraremos em contato em breve.", "success")
     return redirect(request.referrer or url_for('routes.dashboard'))

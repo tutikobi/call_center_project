@@ -54,3 +54,17 @@
     </div>
 </div>
 {% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/imask"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var whatsappInput = document.getElementById('whatsapp_numero');
+        if(whatsappInput) {
+            IMask(whatsappInput, {
+                mask: '(00) 00000-0000'
+            });
+        }
+    });
+</script>
+{% endblock %}

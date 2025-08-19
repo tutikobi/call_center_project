@@ -3,9 +3,9 @@
 {% block title %}Conversas WhatsApp{% endblock %}
 
 {% block content %}
-<div class="container-fluid h-100">
-    <div class="row h-100">
-        <div class="col-md-4 h-100 p-0" id="lista-conversas-coluna">
+<div class="container-fluid h-100 p-0">
+    <div class="row h-100 g-0">
+        <div class="col-md-4 h-100" id="lista-conversas-coluna">
             <div class="card h-100 rounded-0 border-end">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">Conversas Ativas ({{ conversas|length }})</h5>
@@ -13,35 +13,19 @@
                 <div class="card-body p-0 overflow-auto">
                     <div class="list-group list-group-flush" id="lista-de-conversas">
                         {% for conversa in conversas %}
-                        <div class="list-group-item list-group-item-action p-3">
-                            <a href="#" class="text-decoration-none text-dark stretched-link" data-conversa-id="{{ conversa.id }}">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">{{ conversa.nome_cliente }}</h6>
-                                    <small class="text-muted">{{ conversa.inicio.strftime('%H:%M') }}</small>
-                                </div>
-                                <p class="mb-1 small text-muted" id="ultima-msg-{{ conversa.id }}">
-                                    {% if conversa.agente_atribuido %}
-                                        <i class="fas fa-user-check text-success me-1"></i> Atribuído a: <strong>{{ conversa.agente_atribuido.nome }}</strong>
-                                    {% else %}
-                                        <i class="fas fa-user-plus text-warning me-1"></i> Não atribuído
-                                    {% endif %}
-                                </p>
-                            </a>
-
-                            {% if current_user.role == 'admin_empresa' %}
-                            <form action="{{ url_for('routes.atribuir_conversa', conversa_id=conversa.id) }}" method="POST" class="mt-2 d-flex">
-                                <select name="agente_id" class="form-select form-select-sm me-2">
-                                    <option value="nenhum">Nenhum Agente</option>
-                                    {% for agente in agentes %}
-                                        <option value="{{ agente.id }}" {% if conversa.agente_atribuido_id == agente.id %}selected{% endif %}>
-                                            {{ agente.nome }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                                <button type="submit" class="btn btn-sm btn-outline-primary">Atribuir</button>
-                            </form>
-                            {% endif %}
-                        </div>
+                        <a href="#" class="list-group-item list-group-item-action p-3" data-conversa-id="{{ conversa.id }}">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ conversa.nome_cliente }}</h6>
+                                <small class="text-muted">{{ conversa.inicio.strftime('%H:%M') }}</small>
+                            </div>
+                            <p class="mb-1 small text-muted">
+                                {% if conversa.agente_atribuido %}
+                                    <i class="fas fa-user-check text-success me-1"></i> Atribuído a: <strong>{{ conversa.agente_atribuido.nome }}</strong>
+                                {% else %}
+                                    <i class="fas fa-user-plus text-warning me-1"></i> Não atribuído
+                                {% endif %}
+                            </p>
+                        </a>
                         {% else %}
                         <div class="p-3 text-center text-muted">Nenhuma conversa ativa.</div>
                         {% endfor %}
@@ -50,31 +34,132 @@
             </div>
         </div>
 
-        <div class="col-md-8 h-100 p-0" id="chat-coluna">
-            <div class="card h-100 rounded-0 d-flex flex-column">
-                <div class="card-header bg-light" id="chat-header">
-                    <h5 class="mb-0">Selecione uma conversa</h5>
-                </div>
-                <div class="card-body overflow-auto" id="chat-body">
-                    <div class="text-center text-muted mt-5 pt-5">
-                        <i class="fas fa-comments fa-3x"></i>
-                        <p class="mt-2">As mensagens da conversa selecionada aparecerão aqui.</p>
-                    </div>
-                </div>
-                <div class="card-footer bg-light p-3" id="chat-footer" style="display: none;">
-                    <div class="input-group">
-                        <input type="text" id="mensagem-input" class="form-control" placeholder="Digite sua mensagem...">
-                        <button class="btn btn-success" type="button" id="enviar-btn">
-                            <i class="fas fa-paper-plane"></i> Enviar
-                        </button>
-                    </div>
+        <div class="col-md-8 h-100" id="chat-coluna">
+            <div id="chat-placeholder" class="d-flex h-100 align-items-center justify-content-center text-center text-muted">
+                <div>
+                    <i class="fab fa-whatsapp fa-4x"></i>
+                    <p class="mt-3">Selecione uma conversa à esquerda para começar.</p>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
-    // O seu script existente para carregar o chat pode permanecer aqui
+document.addEventListener('DOMContentLoaded', function() {
+    const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+    const listaConversas = document.getElementById('lista-de-conversas');
+    const chatColuna = document.getElementById('chat-coluna');
+    let currentConversationId = null;
+
+    listaConversas.addEventListener('click', function(e) {
+        e.preventDefault();
+        const link = e.target.closest('a');
+        if (link) {
+            const conversaId = link.dataset.conversaId;
+            initWhatsAppChat(conversaId);
+        }
+    });
+
+    function initWhatsAppChat(conversaId) {
+        if (currentConversationId === conversaId) return;
+        currentConversationId = conversaId;
+
+        // Avisa o servidor que estamos a ouvir esta conversa
+        socket.emit('join_conversation', { conversa_id: conversaId });
+
+        // Busca o histórico da conversa
+        fetch(`/api/conversa/${conversaId}`)
+            .then(response => response.json())
+            .then(data => {
+                renderChatWindow(conversaId, data.cliente, data.mensagens);
+            });
+    }
+
+    function renderChatWindow(conversaId, clienteNome, mensagens) {
+        chatColuna.innerHTML = `
+            <div class="whatsapp-container">
+                <div class="whatsapp-header">
+                    <div class="contact-info">
+                        <div class="avatar">${clienteNome[0].toUpperCase()}</div>
+                        <div class="contact-details">
+                            <h6>${clienteNome}</h6>
+                            <span class="status">online</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="whatsapp-messages" id="messages-container">
+                    ${mensagens.map(msg => renderMessage(msg.remetente, msg.conteudo, msg.timestamp)).join('')}
+                </div>
+                <div class="whatsapp-input">
+                    <input type="text" id="mensagem-input" placeholder="Digite uma mensagem...">
+                    <button class="send-btn" id="enviar-btn"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+        `;
+        scrollToBottom();
+
+        // Adiciona listeners para o envio de mensagens
+        const enviarBtn = document.getElementById('enviar-btn');
+        const mensagemInput = document.getElementById('mensagem-input');
+
+        enviarBtn.addEventListener('click', () => sendMessage(conversaId));
+        mensagemInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage(conversaId);
+        });
+    }
+
+    function renderMessage(remetente, conteudo, timestamp) {
+        const messageClass = remetente === 'agente' ? 'sent' : 'received';
+        return `
+            <div class="message ${messageClass}">
+                <p>${conteudo}</p>
+                <span class="timestamp">${timestamp}</span>
+            </div>
+        `;
+    }
+
+    function sendMessage(conversaId) {
+        const mensagemInput = document.getElementById('mensagem-input');
+        const mensagem = mensagemInput.value.trim();
+
+        if (mensagem) {
+            fetch(`/api/conversa/${conversaId}/enviar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mensagem: mensagem })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    const messagesContainer = document.getElementById('messages-container');
+                    messagesContainer.innerHTML += renderMessage('agente', mensagem, new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+                    mensagemInput.value = '';
+                    scrollToBottom();
+                } else {
+                    alert('Erro ao enviar mensagem.');
+                }
+            });
+        }
+    }
+    
+    // Ouve por novas mensagens do cliente em tempo real
+    socket.on('nova_mensagem_cliente', function(data) {
+        if (data.conversa_id == currentConversationId) {
+            const messagesContainer = document.getElementById('messages-container');
+            messagesContainer.innerHTML += renderMessage('cliente', data.conteudo, data.timestamp);
+            scrollToBottom();
+        }
+    });
+
+    function scrollToBottom() {
+        const messagesContainer = document.getElementById('messages-container');
+        if(messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    }
+});
 </script>
 {% endblock %}

@@ -47,44 +47,46 @@
         Caixa de Entrada
     </div>
     <div class="card-body">
-        <table class="table table-hover">
-            <thead>
-                <tr>
-                    <th>Status</th>
-                    <th>Remetente</th>
-                    <th>Assunto</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for email in lista_de_emails %}
-                <tr class="{% if email.status == 'nao_lido' %}fw-bold{% endif %}">
-                    <td>
-                        {% if email.status == 'nao_lido' %}
-                            <span class="badge bg-warning text-dark">Não Lido</span>
-                        {% elif email.status == 'lido' %}
-                            <span class="badge bg-secondary">Lido</span>
-                        {% elif email.status == 'respondido' %}
-                            <span class="badge bg-success">Respondido</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ email.remetente }}</td>
-                    <td>{{ email.assunto }}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" title="Ver Email">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        {% if current_user.role == 'admin_empresa' %}
-                        <a href="{{ url_for('routes.alertar_agente', agente_id=agente.id, assunto=email.assunto) }}" class="btn btn-sm btn-outline-danger" title="Alertar Agente sobre Prioridade Alta">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </a>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Remetente</th>
+                        <th>Assunto</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for email in lista_de_emails %}
+                    <tr class="{% if email.status == 'nao_lido' %}fw-bold{% endif %}">
+                        <td>
+                            {% if email.status == 'nao_lido' %}<span class="badge bg-warning text-dark">Não Lido</span>
+                            {% elif email.status == 'lido' %}<span class="badge bg-secondary">Lido</span>
+                            {% elif email.status == 'respondido' %}<span class="badge bg-success">Respondido</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ email.remetente }}</td>
+                        <td>{{ email.assunto }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('routes.ver_email', email_id=email.id) }}" class="btn btn-sm btn-outline-primary" title="Ver Email">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% if current_user.role == 'admin_empresa' %}
+                            <a href="{{ url_for('routes.alertar_agente', agente_id=agente.id, assunto=email.assunto) }}" class="btn btn-sm btn-outline-danger" title="Alertar Agente sobre Prioridade Alta">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">Nenhum email encontrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
-
 {% endblock %}

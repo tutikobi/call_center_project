@@ -5,7 +5,6 @@ from datetime import datetime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
-
 class Empresa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome_empresa = db.Column(db.String(150), nullable=False)
@@ -73,7 +72,7 @@ class Email(db.Model):
     assunto = db.Column(db.String(200), nullable=False)
     corpo = db.Column(db.Text)
     data_recebimento = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(50), default='nao_lido') # nao_lido, lido, respondido
+    status = db.Column(db.String(50), default='nao_lido')
 
 class Notificacao(db.Model):
     id = db.Column(db.Integer, primary_key=True)

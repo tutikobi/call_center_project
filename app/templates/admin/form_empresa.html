@@ -7,6 +7,14 @@
 
 <div class="card">
     <div class="card-body">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         <form method="POST" action="{{ url_for('admin.editar_empresa', id=empresa.id) if is_edit else url_for('admin.nova_empresa') }}">
             
             <h5 class="mb-3">Dados da Empresa</h5>
@@ -18,6 +26,16 @@
                 <div class="col-md-6 mb-3">
                     <label for="cnpj" class="form-label">CNPJ</label>
                     <input type="text" class="form-control" id="cnpj" name="cnpj" value="{{ empresa.cnpj if empresa else '' }}" required>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="telefone_contato" class="form-label">Telefone para Contato (Opcional)</label>
+                    <input type="text" class="form-control" id="telefone_contato" name="telefone_contato" placeholder="(00) 00000-0000" value="{{ empresa.telefone_contato if empresa else '' }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="responsavel_contrato" class="form-label">Responsável pelo Contrato</label>
+                    <input type="text" class="form-control" id="responsavel_contrato" name="responsavel_contrato" value="{{ empresa.responsavel_contrato if empresa else '' }}">
                 </div>
             </div>
 
@@ -90,4 +108,25 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/imask"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var cnpjInput = document.getElementById('cnpj');
+        if(cnpjInput) {
+            IMask(cnpjInput, {
+                mask: '00.000.000/0000-00'
+            });
+        }
+
+        var telefoneInput = document.getElementById('telefone_contato');
+        if(telefoneInput) {
+            IMask(telefoneInput, {
+                mask: '(00) 00000-0000'
+            });
+        }
+    });
+</script>
 {% endblock %}

@@ -8,7 +8,7 @@
 <div class="row">
     <div class="col-lg-3 col-md-6 mb-4">
         <div class="metric-card">
-            <div class="metric-icon bg-info"><i class="fas fa-phone-alt"></i></div>
+            <div class="metric-icon bg-info"><i class="fas fa-star"></i></div>
             <div class="metric-content">
                 <div class="metric-value">{{ total_avaliacoes or 0 }}</div>
                 <div class="metric-label">Avaliações</div>
@@ -46,18 +46,22 @@
 
 <div class="row">
     <div class="col-lg-4 mb-4">
-        <div class="chart-card">
-            <h5 class="card-title">Atendimentos por Canal</h5>
-            <div style="position: relative; height: 300px; width: 100%;">
-                <canvas id="graficoCanais"></canvas>
+        <div class="card h-100">
+            <div class="card-header">Atendimentos por Canal</div>
+            <div class="card-body">
+                <div style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="graficoCanais"></canvas>
+                </div>
             </div>
         </div>
     </div>
     <div class="col-lg-8 mb-4">
-        <div class="chart-card">
-            <h5 class="card-title">CSAT Médio por Agente</h5>
-            <div style="position: relative; height: 300px; width: 100%;">
-                <canvas id="graficoCsatAgente"></canvas>
+        <div class="card h-100">
+            <div class="card-header">CSAT Médio por Agente</div>
+            <div class="card-body">
+                <div style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="graficoCsatAgente"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -68,7 +72,7 @@
         <h3 class="h4">Agentes da Empresa</h3>
         <div class="row">
             {% for agente in agentes_online %}
-            <div class="col-lg-3 col-md-6 mb-3">
+            <div class="col-lg-4 col-md-6 mb-3">
                 <div class="agent-card">
                     <div class="agent-avatar">{{ agente.nome[0] | upper }}</div>
                     <div class="agent-info">
@@ -93,26 +97,14 @@
 
 {% block scripts %}
 <script>
-// O bloco de scripts permanece o mesmo da resposta anterior
 document.addEventListener('DOMContentLoaded', function () {
-    const getChartColors = (numColors) => {
-        const colors = ['#27ae60', '#2980b9', '#f1c40f', '#e74c3c', '#8e44ad', '#34495e', '#1abc9c'];
-        return colors.slice(0, numColors);
-    };
     const renderChart = (ctx, type, labels, data, chartLabel) => {
         const canvas = ctx.canvas;
-        const parent = canvas.parentElement;
         if (!data || data.length === 0) {
-            canvas.style.display = 'none';
-            let message = parent.querySelector('.no-data-message');
-            if (!message) {
-                message = document.createElement('p');
-                message.textContent = 'Não há dados para exibir este gráfico.';
-                message.className = 'text-center text-muted mt-5 pt-5 no-data-message';
-                parent.appendChild(message);
-            }
+            canvas.parentElement.innerHTML = '<p class="text-center text-muted mt-5 pt-5">Não há dados para exibir este gráfico.</p>';
             return;
         }
+        const chartColors = ['#27ae60', '#2980b9', '#f1c40f', '#e74c3c', '#8e44ad'];
         new Chart(ctx, {
             type: type,
             data: {
@@ -120,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 datasets: [{
                     label: chartLabel,
                     data: data,
-                    backgroundColor: getChartColors(data.length),
+                    backgroundColor: chartColors,
                 }]
             },
             options: {
@@ -139,11 +131,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     };
+
     fetch("{{ url_for('api.dados_dashboard_graficos') }}")
-        .then(response => {
-            if (!response.ok) throw new Error('Falha na resposta da rede');
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             const ctxCanais = document.getElementById('graficoCanais');
             if (ctxCanais && data.graficoCanais) {
@@ -156,8 +146,8 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .catch(error => {
             console.error('Erro ao buscar dados para os gráficos:', error);
-            document.querySelector('#graficoCanais').parentElement.innerHTML = '<p class="text-center text-muted mt-5 pt-5">Erro ao carregar gráfico.</p>';
-            document.querySelector('#graficoCsatAgente').parentElement.innerHTML = '<p class="text-center text-muted mt-5 pt-5">Erro ao carregar gráfico.</p>';
+            document.getElementById('graficoCanais').parentElement.innerHTML = '<p class="text-center text-danger mt-5">Erro ao carregar gráfico.</p>';
+            document.getElementById('graficoCsatAgente').parentElement.innerHTML = '<p class="text-center text-danger mt-5">Erro ao carregar gráfico.</p>';
         });
 });
 </script>
