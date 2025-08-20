@@ -1,0 +1,17 @@
+Pergunta: como criar um novo usuário ou agente
+Resposta: Para criar um novo usuário, o administrador da empresa deve ir em "Gerenciar Usuários" no menu lateral e clicar no botão "Novo Usuário". Será necessário preencher o nome, email, WhatsApp e uma senha provisória para o novo agente.
+
+Pergunta: como gerar um relatório de avaliações
+Resposta: Na tela de "Relatórios", você pode usar os filtros para definir um Período (últimos 7 ou 30 dias), o Canal (WhatsApp ou Voz) e um Agente específico. Após selecionar o que deseja, clique em "Aplicar Filtros" e os resultados aparecerão na tabela. Você também pode imprimir o relatório em PDF.
+
+Pergunta: onde configuro a api do whatsapp
+Resposta: Para conectar seu número, acesse a tela de "Configurações" no menu. Lá, você encontrará os campos para inserir as credenciais da sua API do WhatsApp Business, como o Token de Acesso e o ID do Número de Telefone.
+
+Pergunta: como responder uma conversa do whatsapp
+Resposta: Vá para a tela "Conversas WhatsApp". A lista de conversas ativas estará à esquerda. Clique em uma conversa para abri-la na janela principal à direita. No final da janela, haverá um campo para você digitar sua resposta e um botão para enviar.
+
+Pergunta: como registrar uma avaliação de chamada
+Resposta: Acesse a tela "Avaliação" no menu. Nela, você seleciona o agente que realizou o atendimento, o canal (Voz, WhatsApp, etc.), a nota de satisfação (CSAT) e pode adicionar observações. Depois é só clicar em "Registrar Avaliação".
+
+Pergunta: não consigo logar qual a senha
+Resposta: O sistema não tem como recuperar sua senha antiga por segurança. Por favor, peça para o administrador da sua empresa ("admin_empresa") resetar sua senha na tela de "Gerenciar Usuários". Ele pode definir uma nova senha provisória para você.

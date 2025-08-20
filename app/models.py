@@ -53,10 +53,12 @@ class Usuario(db.Model, UserMixin):
     status = db.Column(db.String(20), nullable=False, default='ativo')
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
     avaliacoes = db.relationship('Avaliacao', backref='agente', lazy=True)
-    tickets_enviados = db.relationship('TicketSuporte', backref='remetente', lazy=True)
+    tickets_enviados = db.relationship('TicketSuporte', backref='remetente', lazy=True, foreign_keys='TicketSuporte.usuario_id')
     anotacoes_criadas = db.relationship('AnotacaoTicket', backref='autor', lazy=True)
     emails = db.relationship('Email', backref='agente', lazy=True)
     notificacoes = db.relationship('Notificacao', backref='usuario', lazy=True, cascade="all, delete-orphan")
+    tickets_assigned = db.relationship('TicketSuporte', backref='assignee', lazy=True, foreign_keys='TicketSuporte.assigned_to_id')
+
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -122,7 +124,11 @@ class TicketSuporte(db.Model):
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    
+    assigned_to_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
+    
     anotacoes = db.relationship('AnotacaoTicket', backref='ticket', lazy=True, cascade="all, delete-orphan", order_by='AnotacaoTicket.data_criacao.asc()')
+    atividades = db.relationship('TicketAtividade', backref='ticket', lazy=True, cascade="all, delete-orphan", order_by='TicketAtividade.timestamp.asc()')
 
 class AnotacaoTicket(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -130,3 +136,13 @@ class AnotacaoTicket(db.Model):
     autor_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
     conteudo = db.Column(db.Text, nullable=False)
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    is_solution = db.Column(db.Boolean, default=False)
+
+class TicketAtividade(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('ticket_suporte.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    user = db.relationship('Usuario')
+    activity_type = db.Column(db.String(50), nullable=False) # Ex: 'criacao', 'status_change', 'assignment', 'note'
+    description = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)

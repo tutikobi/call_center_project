@@ -151,13 +151,52 @@ def configuracoes():
 @bp.route('/suporte/sugestao_ia', methods=['POST'])
 @login_required
 def sugestao_ia():
-    if not request.json or 'descricao' not in request.json:
-        return jsonify({'sugestao': ''})
-    descricao = request.json['descricao']
-    if len(descricao) < 20:
-        return jsonify({'sugestao': ''})
+    descricao = request.json.get('descricao', '')
+    if len(descricao) < 10:
+        return jsonify({
+            'status': 'not_found', 
+            'sugestao': 'Por favor, forneça mais detalhes sobre seu problema para que eu possa te ajudar melhor.'
+        })
+
     resposta = get_ai_response(descricao, knowledge_base)
-    return jsonify({'sugestao': resposta or ''})
+
+    if resposta:
+        return jsonify({'status': 'found', 'sugestao': resposta})
+    else:
+        return jsonify({
+            'status': 'not_found', 
+            'sugestao': 'Não encontrei uma solução na minha base de conhecimento. Para garantir que seu problema seja resolvido, estou abrindo um ticket para nossa equipe de suporte.'
+        })
+
+@bp.route('/suporte/auto_create_ticket', methods=['POST'])
+@login_required
+def auto_create_ticket():
+    data = request.json
+    topic = data.get('topic')
+    description = data.get('description')
+
+    if not all([topic, description]):
+        return jsonify({'status': 'error', 'message': 'Faltam dados para criar o ticket.'}), 400
+
+    if topic == "Suporte Técnico" or "parado" in description.lower() or "erro" in description.lower():
+        prioridade = "alta"
+    elif topic == "Problemas com Fatura":
+        prioridade = "media"
+    else:
+        prioridade = "baixa"
+
+    novo_ticket = TicketSuporte(
+        assunto=f"Ticket Automático: {topic}",
+        descricao=description,
+        prioridade=prioridade,
+        status='aberto',
+        empresa_id=current_user.empresa_id,
+        usuario_id=current_user.id
+    )
+    db.session.add(novo_ticket)
+    db.session.commit()
+
+    return jsonify({'status': 'ok', 'message': 'Ticket criado com sucesso!'})
 
 @bp.route('/suporte/novo_ticket', methods=['POST'])
 @login_required

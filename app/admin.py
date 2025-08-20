@@ -1,13 +1,14 @@
 # call_center_project/app/admin.py
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from .models import db, Empresa, Usuario, TicketSuporte, ReputacaoHistorico, AnotacaoTicket
+from .models import db, Empresa, Usuario, TicketSuporte, ReputacaoHistorico, AnotacaoTicket, TicketAtividade
 from flask_login import login_required, current_user
 from functools import wraps
 import re
 from datetime import datetime
 import requests
 from .management import PLAN_LIMITS
+from .ai_service import add_to_knowledge_base
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -20,7 +21,16 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- ROTAS DE REPUTAÇÃO ---
+def log_ticket_activity(ticket_id, activity_type, description):
+    """Função auxiliar para registar atividades no ticket."""
+    activity = TicketAtividade(
+        ticket_id=ticket_id,
+        user_id=current_user.id,
+        activity_type=activity_type,
+        description=description
+    )
+    db.session.add(activity)
+
 @bp.route('/historico/<int:id>/get_google_reviews')
 @login_required
 @admin_required
@@ -214,7 +224,8 @@ def listar_tickets():
 @admin_required
 def ver_ticket(id):
     ticket = TicketSuporte.query.get_or_404(id)
-    return render_template('admin/ver_ticket.html', ticket=ticket, page_title=f"Ticket #{ticket.id}")
+    super_admins = Usuario.query.filter_by(role='super_admin').order_by(Usuario.nome).all()
+    return render_template('admin/ver_ticket.html', ticket=ticket, page_title=f"Ticket #{ticket.id}", super_admins=super_admins)
 
 @bp.route('/suporte/ticket/<int:id>/mudar_status', methods=['POST'])
 @login_required
@@ -222,12 +233,13 @@ def ver_ticket(id):
 def mudar_status_ticket(id):
     ticket = TicketSuporte.query.get_or_404(id)
     novo_status = request.form.get('novo_status')
-    if novo_status in ['aberto', 'em_andamento', 'fechado']:
+    if novo_status in ['aberto', 'em_andamento', 'fechado'] and ticket.status != novo_status:
+        log_ticket_activity(ticket.id, 'Mudança de Status', f'Status alterado de "{ticket.status}" para "{novo_status}".')
         ticket.status = novo_status
         db.session.commit()
-        flash(f"O status do ticket #{ticket.id} foi atualizado para '{novo_status}'.", "success")
+        flash(f"O status do ticket #{ticket.id} foi atualizado.", "success")
     else:
-        flash("Status inválido.", "danger")
+        flash("Status inválido ou inalterado.", "warning")
     return redirect(url_for('admin.ver_ticket', id=id))
 
 @bp.route('/suporte/ticket/<int:id>/adicionar_anotacao', methods=['POST'])
@@ -235,12 +247,79 @@ def mudar_status_ticket(id):
 @admin_required
 def adicionar_anotacao(id):
     ticket = TicketSuporte.query.get_or_404(id)
-    conteudo_anotacao = request.form.get('conteudo')
-    if not conteudo_anotacao:
+    conteudo = request.form.get('conteudo')
+    if not conteudo:
         flash('O conteúdo da anotação não pode estar vazio.', 'warning')
-        return redirect(url_for('admin.ver_ticket', id=id))
-    nova_anotacao = AnotacaoTicket(ticket_id=ticket.id, autor_id=current_user.id, conteudo=conteudo_anotacao)
-    db.session.add(nova_anotacao)
-    db.session.commit()
-    flash('Anotação interna adicionada com sucesso.', 'success')
+    else:
+        nova_anotacao = AnotacaoTicket(ticket_id=ticket.id, autor_id=current_user.id, conteudo=conteudo)
+        db.session.add(nova_anotacao)
+        log_ticket_activity(ticket.id, 'Anotação', 'Anotação interna adicionada.')
+        db.session.commit()
+        flash('Anotação interna adicionada com sucesso.', 'success')
     return redirect(url_for('admin.ver_ticket', id=id))
+
+@bp.route('/suporte/ticket/<int:id>/assign', methods=['POST'])
+@login_required
+@admin_required
+def assign_ticket(id):
+    ticket = TicketSuporte.query.get_or_404(id)
+    assignee_id = request.form.get('assignee_id')
+    assignee = Usuario.query.get(assignee_id)
+    
+    if assignee and assignee.role == 'super_admin':
+        ticket.assigned_to_id = assignee.id
+        log_ticket_activity(ticket.id, 'Atribuição', f'Ticket atribuído a {assignee.nome}.')
+        db.session.commit()
+        flash(f'Ticket atribuído a {assignee.nome}.', 'success')
+    else:
+        flash('Operador inválido.', 'danger')
+        
+    return redirect(url_for('admin.ver_ticket', id=id))
+
+@bp.route('/suporte/anotacao/<int:id>/mark_solution', methods=['POST'])
+@login_required
+@admin_required
+def mark_solution(id):
+    anotacao = AnotacaoTicket.query.get_or_404(id)
+    ticket = anotacao.ticket
+
+    AnotacaoTicket.query.filter_by(ticket_id=ticket.id, is_solution=True).update({'is_solution': False})
+    
+    anotacao.is_solution = True
+    log_ticket_activity(ticket.id, 'Solução', f'Anotação #{anotacao.id} marcada como solução.')
+    db.session.commit()
+    flash('Anotação marcada como solução oficial do ticket.', 'success')
+    return redirect(url_for('admin.ver_ticket', id=ticket.id))
+
+@bp.route('/treinamento_ia')
+@login_required
+@admin_required
+def treinamento_ia():
+    tickets_resolvidos = db.session.query(TicketSuporte).join(AnotacaoTicket).filter(
+        TicketSuporte.status == 'fechado',
+        AnotacaoTicket.is_solution == True
+    ).distinct().order_by(TicketSuporte.data_criacao.desc()).all()
+    
+    return render_template('admin/treinamento_ia.html', tickets=tickets_resolvidos, page_title="Treinamento da I.A.")
+
+@bp.route('/treinamento_ia/add_to_kb', methods=['POST'])
+@login_required
+@admin_required
+def add_to_kb():
+    ticket_id = request.form.get('ticket_id')
+    ticket = TicketSuporte.query.get_or_404(ticket_id)
+    
+    solucao = AnotacaoTicket.query.filter_by(ticket_id=ticket.id, is_solution=True).first()
+    
+    if not solucao:
+        flash('Nenhuma solução marcada foi encontrada para este ticket.', 'danger')
+        return redirect(url_for('admin.treinamento_ia'))
+
+    sucesso = add_to_knowledge_base(ticket.descricao, solucao.conteudo)
+    
+    if sucesso:
+        flash('Novo conhecimento adicionado à I.A. com sucesso!', 'success')
+    else:
+        flash('Ocorreu um erro ao tentar treinar a I.A.', 'danger')
+
+    return redirect(url_for('admin.treinamento_ia'))

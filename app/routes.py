@@ -28,13 +28,49 @@ def dashboard():
     total_avaliacoes = db.session.query(Avaliacao.id).filter_by(empresa_id=empresa_id_do_usuario).count()
     conversas_ativas = db.session.query(ConversaWhatsApp.id).filter_by(empresa_id=empresa_id_do_usuario, status='ativo').count()
     csat_geral = db.session.query(func.avg(Avaliacao.csat)).filter_by(empresa_id=empresa_id_do_usuario).scalar() or 0
-    agentes_online = Usuario.query.filter_by(empresa_id=empresa_id_do_usuario).limit(5).all()
+    agentes_online = Usuario.query.filter(Usuario.empresa_id == empresa_id_do_usuario, Usuario.role.in_(['agente', 'admin_empresa'])).order_by(Usuario.nome).all()
     
     return render_template("dashboard.html", 
                          total_avaliacoes=total_avaliacoes,
                          conversas_ativas=conversas_ativas,
                          csat_geral=round(csat_geral, 1),
                          agentes_online=agentes_online)
+
+@bp.route("/dashboard/agente/<int:agente_id>")
+@login_required
+def dashboard_agente(agente_id):
+    if current_user.role == 'agente' and current_user.id != agente_id:
+        flash("Acesso não permitido.", "danger")
+        return redirect(url_for('routes.dashboard'))
+    
+    agente = Usuario.query.get_or_404(agente_id)
+
+    if current_user.role == 'admin_empresa' and agente.empresa_id != current_user.empresa_id:
+        flash("Agente não encontrado na sua empresa.", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    total_avaliacoes = Avaliacao.query.filter_by(agente_id=agente.id).count()
+    csat_medio = db.session.query(func.avg(Avaliacao.csat)).filter_by(agente_id=agente.id).scalar() or 0.0
+    conversas_atribuidas = ConversaWhatsApp.query.filter_by(agente_atribuido_id=agente.id).count()
+
+    atendimentos_por_canal = db.session.query(
+        Avaliacao.canal, func.count(Avaliacao.id)
+    ).filter_by(agente_id=agente.id).group_by(Avaliacao.canal).all()
+    
+    chart_data = {
+        'labels': [item[0].capitalize() for item in atendimentos_por_canal],
+        'data': [item[1] for item in atendimentos_por_canal]
+    }
+
+    ultimas_avaliacoes = Avaliacao.query.filter_by(agente_id=agente.id).order_by(Avaliacao.data.desc()).limit(5).all()
+
+    return render_template("dashboard_agente.html",
+                           agente=agente,
+                           total_avaliacoes=total_avaliacoes,
+                           csat_medio=round(csat_medio, 1),
+                           conversas_atribuidas=conversas_atribuidas,
+                           chart_data=chart_data,
+                           ultimas_avaliacoes=ultimas_avaliacoes)
 
 @bp.route("/avaliar", methods=["GET", "POST"])
 @login_required

@@ -27,6 +27,7 @@ body {
     z-index: 100;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
 }
 
 .sidebar-title {
@@ -81,10 +82,17 @@ body {
     flex-shrink: 0;
 }
 
-.content {
+.main-wrapper {
     margin-left: 250px;
-    padding: 2.5rem;
     width: calc(100% - 250px);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.content {
+    padding: 2.5rem;
+    flex-grow: 1;
 }
 
 .card {
@@ -151,6 +159,11 @@ body {
 .bg-primary { background-color: #4A90E2 !important; }
 
 /* --- ESTILOS PARA OS CARDS DOS AGENTES --- */
+.agent-card-link, .agent-card-link:hover {
+    text-decoration: none;
+    color: inherit;
+}
+
 .agent-card {
     display: flex;
     align-items: center;
@@ -195,7 +208,6 @@ body {
     font-size: 0.85rem;
     color: #6c757d;
 }
-/* ... (todo o seu CSS existente) ... */
 
 /* --- ESTILOS PARA A JANELA DE CHAT DO WHATSAPP --- */
 .whatsapp-container {
@@ -291,11 +303,11 @@ body {
 /* Botão Flutuante de Suporte */
 #support-fab {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    bottom: 30px; /* Posição no canto inferior */
+    right: 30px; /* Posição no canto direito */
     width: 60px;
     height: 60px;
-    z-index: 1050; /* Acima do modal backdrop (1040) */
+    z-index: 1050;
     border: none;
     display: flex;
     align-items: center;
@@ -310,7 +322,7 @@ body {
 }
 
 #support-fab i {
-    margin: 0; /* Remove qualquer margem do ícone */
+    margin: 0;
 }
 
 /* Responsividade para telas menores */
@@ -322,99 +334,22 @@ body {
         height: 50px;
         font-size: 20px;
     }
+}
 
+/* --- ESTILOS PARA O RODAPÉ --- */
+.footer {
+    padding: 1.5rem 100px 1.5rem 2.5rem; /* Adiciona padding à direita para o botão */
+    background-color: #e0f2ff;
+    color: #0b5394;
+    border-top: 1px solid #b8daff;
+    flex-shrink: 0;
+    position: relative; /* Necessário para o padding funcionar bem com conteúdo alinhado à direita */
+}
 
+.footer h6 {
+    color: #0b5394;
 }
-/* ... (todo o seu CSS existente) ... */
 
-/* --- ESTILOS PARA A JANELA DE CHAT DO WHATSAPP --- */
-.whatsapp-container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    background-color: #e5ddd5;
-}
-.whatsapp-header {
-    padding: 10px 15px;
-    background-color: #f0f2f5;
-    border-bottom: 1px solid #ddd;
-    display: flex;
-    align-items: center;
-}
-.contact-info {
-    display: flex;
-    align-items: center;
-}
-.avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background-color: #6c757d;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    margin-right: 15px;
-}
-.contact-details h6 {
-    margin: 0;
-    font-weight: 600;
-}
-.contact-details .status {
-    font-size: 0.8rem;
-    color: #667781;
-}
-.whatsapp-messages {
-    flex-grow: 1;
-    padding: 20px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-}
-.message {
-    padding: 8px 12px;
-    border-radius: 8px;
-    margin-bottom: 10px;
-    max-width: 70%;
-    position: relative;
-}
-.message p {
-    margin: 0;
-    word-wrap: break-word;
-}
-.message.sent {
-    background-color: #dcf8c6;
-    align-self: flex-end;
-}
-.message.received {
-    background-color: #fff;
-    align-self: flex-start;
-}
-.timestamp {
-    font-size: 0.7rem;
-    color: #999;
-    display: block;
-    text-align: right;
-    margin-top: 5px;
-}
-.whatsapp-input {
-    padding: 10px;
-    background-color: #f0f2f5;
-    display: flex;
-    align-items: center;
-}
-.whatsapp-input input {
-    flex-grow: 1;
-    border-radius: 20px;
-    border: 1px solid #ccc;
-    padding: 8px 15px;
-}
-.whatsapp-input .send-btn {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    color: #54656f;
-    margin-left: 10px;
-    cursor: pointer;
+.footer p {
+    color: #3e6a92;
 }

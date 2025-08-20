@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">{{ page_title }}</h1>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        Tickets Resolvidos Prontos para Treinamento
+    </div>
+    <div class="card-body">
+        <p class="text-muted">Abaixo estão os tickets fechados que tiveram uma "Solução Oficial" marcada. Revise a pergunta e a resposta e, se estiverem boas, adicione-as à base de conhecimento da I.A.</p>
+        
+        {% for ticket in tickets %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Ticket #{{ ticket.id }} - {{ ticket.assunto }}</h5>
+                <hr>
+                <h6>Problema do Utilizador (Pergunta):</h6>
+                <p class="bg-light p-2 rounded"><em>{{ ticket.descricao }}</em></p>
+                
+                <h6>Solução Marcada (Resposta):</h6>
+                {% set solution = ticket.anotacoes|selectattr('is_solution')|first %}
+                <p class="bg-light p-2 rounded"><strong>{{ solution.conteudo }}</strong></p>
+
+                <form action="{{ url_for('admin.add_to_kb') }}" method="POST">
+                    <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-brain me-2"></i> Adicionar à Base de Conhecimento da I.A.
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            Nenhum ticket resolvido com uma solução marcada foi encontrado. Para treinar a I.A., primeiro feche um ticket e marque uma das anotações como a solução oficial.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

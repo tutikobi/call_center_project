@@ -73,19 +73,21 @@
         <div class="row">
             {% for agente in agentes_online %}
             <div class="col-lg-4 col-md-6 mb-3">
-                <div class="agent-card">
-                    <div class="agent-avatar">{{ agente.nome[0] | upper }}</div>
-                    <div class="agent-info">
-                        <div class="agent-name">{{ agente.nome }}</div>
-                        <div class="agent-status text-muted">
-                            {% if agente.role == 'admin_empresa' %}
-                                Admin da Empresa
-                            {% else %}
-                                Agente
-                            {% endif %}
+                <a href="{{ url_for('routes.dashboard_agente', agente_id=agente.id) }}" class="agent-card-link">
+                    <div class="agent-card">
+                        <div class="agent-avatar">{{ agente.nome[0] | upper }}</div>
+                        <div class="agent-info">
+                            <div class="agent-name">{{ agente.nome }}</div>
+                            <div class="agent-status text-muted">
+                                {% if agente.role == 'admin_empresa' %}
+                                    Admin da Empresa
+                                {% else %}
+                                    Agente
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                </div>
+                </a>
             </div>
             {% else %}
             <p class="text-muted">Nenhum agente encontrado.</p>

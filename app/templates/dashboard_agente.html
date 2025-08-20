@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard de {{ agente.nome }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Dashboard do Agente: {{ agente.nome }}</h1>
+    <a href="{{ url_for('routes.dashboard') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i> Voltar ao Dashboard Principal
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon bg-info"><i class="fas fa-star"></i></div>
+            <div class="metric-content">
+                <div class="metric-value">{{ total_avaliacoes }}</div>
+                <div class="metric-label">Avaliações Recebidas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon bg-success"><i class="fab fa-whatsapp"></i></div>
+            <div class="metric-content">
+                <div class="metric-value">{{ conversas_atribuidas }}</div>
+                <div class="metric-label">Conversas Atribuídas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon bg-danger"><i class="fas fa-smile"></i></div>
+            <div class="metric-content">
+                <div class="metric-value">{{ csat_medio }}</div>
+                <div class="metric-label">CSAT Médio</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-5 mb-4">
+        <div class="card h-100">
+            <div class="card-header">Atendimentos por Canal</div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <div style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="graficoCanaisAgente"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7 mb-4">
+        <div class="card h-100">
+            <div class="card-header">Últimas 5 Avaliações Recebidas</div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Canal</th>
+                                <th>CSAT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for avaliacao in ultimas_avaliacoes %}
+                            <tr>
+                                <td>{{ avaliacao.data.strftime('%d/%m/%Y') }}</td>
+                                <td><span class="badge {% if avaliacao.canal == 'whatsapp' %}bg-success{% else %}bg-primary{% endif %}">{{ avaliacao.canal | capitalize }}</span></td>
+                                <td>{{ avaliacao.csat }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">Nenhuma avaliação encontrada.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const renderChart = (ctx, type, labels, data, chartLabel) => {
+        const canvas = ctx.canvas;
+        if (!data || data.length === 0 || data.every(item => item === 0)) {
+            canvas.parentElement.innerHTML = '<p class="text-center text-muted mt-5">Não há dados para exibir este gráfico.</p>';
+            return;
+        }
+        const chartColors = ['#27ae60', '#2980b9', '#f1c40f', '#e74c3c', '#8e44ad'];
+        new Chart(ctx, {
+            type: type,
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: chartLabel,
+                    data: data,
+                    backgroundColor: chartColors,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'bottom' } }
+            }
+        });
+    };
+    
+    const canaisData = JSON.parse('{{ chart_data | tojson | safe }}');
+    const ctxCanais = document.getElementById('graficoCanaisAgente');
+    if (ctxCanais && canaisData) {
+        renderChart(ctxCanais.getContext('2d'), 'pie', canaisData.labels, canaisData.data, 'Atendimentos');
+    }
+});
+</script>
+{% endblock %}

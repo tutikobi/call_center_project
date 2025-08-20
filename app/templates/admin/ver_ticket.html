@@ -11,8 +11,7 @@
 </div>
 
 <div class="row">
-    <!-- Coluna de Informações do Ticket -->
-    <div class="col-md-7">
+    <div class="col-lg-8">
         <div class="card shadow-sm mb-4">
             <div class="card-header">
                 <h5 class="mb-0">{{ ticket.assunto }}</h5>
@@ -27,58 +26,97 @@
             </div>
         </div>
 
-        <!-- Seção de Anotações (Futuro) -->
-        <div class="card shadow-sm">
+        <div class="card shadow-sm mb-4">
             <div class="card-header">
                 <h5 class="mb-0">Anotações Internas</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted">Funcionalidade de anotações será implementada em breve.</p>
+                {% for anotacao in ticket.anotacoes %}
+                <div class="d-flex mb-3 {% if anotacao.is_solution %}border border-success rounded p-2{% endif %}">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="agent-avatar" style="width: 40px; height: 40px; font-size: 1rem;">{{ anotacao.autor.nome[0] | upper }}</div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between">
+                            <strong>{{ anotacao.autor.nome }}</strong>
+                            <small class="text-muted">{{ anotacao.data_criacao.strftime('%d/%m/%Y %H:%M') }}</small>
+                        </div>
+                        <p style="white-space: pre-wrap;" class="mb-1">{{ anotacao.conteudo }}</p>
+                        {% if not anotacao.is_solution and ticket.status == 'fechado' %}
+                        <form action="{{ url_for('admin.mark_solution', id=anotacao.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-link p-0 text-success"><small><i class="fas fa-check-circle me-1"></i>Marcar como Solução</small></button>
+                        </form>
+                        {% elif anotacao.is_solution %}
+                        <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i> Solução Oficial</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-muted">Nenhuma anotação adicionada ainda.</p>
+                {% endfor %}
+            </div>
+            <div class="card-footer">
+                <form action="{{ url_for('admin.adicionar_anotacao', id=ticket.id) }}" method="POST">
+                    <div class="mb-2">
+                        <label for="conteudo" class="form-label">Adicionar Anotação / Resposta</label>
+                        <textarea name="conteudo" id="conteudo" class="form-control" rows="3" placeholder="Digite sua anotação interna aqui..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Adicionar Anotação</button>
+                </form>
             </div>
         </div>
     </div>
 
-    <!-- Coluna de Ações -->
-    <div class="col-md-5">
-        <div class="card shadow-sm">
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-4">
             <div class="card-header">
                 <h5 class="mb-0">Status e Ações</h5>
             </div>
             <div class="card-body">
-                <p>
-                    <strong>Prioridade:</strong>
-                    {% if ticket.prioridade == 'alta' %}
-                        <span class="badge bg-danger">Alta</span>
-                    {% elif ticket.prioridade == 'media' %}
-                        <span class="badge bg-warning text-dark">Média</span>
-                    {% else %}
-                        <span class="badge bg-secondary">Baixa</span>
-                    {% endif %}
-                </p>
-                <p>
-                    <strong>Status Atual:</strong>
-                    {% if ticket.status == 'aberto' %}
-                        <span class="badge bg-success">Aberto</span>
-                    {% elif ticket.status == 'em_andamento' %}
-                        <span class="badge bg-info text-dark">Em Andamento</span>
-                    {% else %}
-                        <span class="badge bg-light text-dark border">Fechado</span>
-                    {% endif %}
-                </p>
+                <form action="{{ url_for('admin.assign_ticket', id=ticket.id) }}" method="POST" class="mb-3">
+                    <label for="assignee_id" class="form-label"><strong>Atribuído a:</strong></label>
+                    <div class="input-group">
+                        <select name="assignee_id" id="assignee_id" class="form-select">
+                            <option value="">Ninguém</option>
+                            {% for admin in super_admins %}
+                            <option value="{{ admin.id }}" {% if ticket.assigned_to_id == admin.id %}selected{% endif %}>{{ admin.nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="btn btn-outline-secondary" type="submit">Atribuir</button>
+                    </div>
+                </form>
                 <hr>
                 <form action="{{ url_for('admin.mudar_status_ticket', id=ticket.id) }}" method="POST">
                     <div class="mb-3">
-                        <label for="novo_status" class="form-label"><strong>Mudar Status para:</strong></label>
-                        <select name="novo_status" id="novo_status" class="form-select">
-                            <option value="aberto" {% if ticket.status == 'aberto' %}disabled{% endif %}>Aberto</option>
-                            <option value="em_andamento" {% if ticket.status == 'em_andamento' %}disabled{% endif %}>Em Andamento</option>
-                            <option value="fechado" {% if ticket.status == 'fechado' %}disabled{% endif %}>Fechado</option>
-                        </select>
+                        <label for="novo_status" class="form-label"><strong>Status Atual:</strong></label>
+                        <div class="input-group">
+                            <select name="novo_status" id="novo_status" class="form-select">
+                                <option value="aberto" {% if ticket.status == 'aberto' %}selected{% endif %}>Aberto</option>
+                                <option value="em_andamento" {% if ticket.status == 'em_andamento' %}selected{% endif %}>Em Andamento</option>
+                                <option value="fechado" {% if ticket.status == 'fechado' %}selected{% endif %}>Fechado</option>
+                            </select>
+                            <button type="submit" class="btn btn-primary">Salvar Status</button>
+                        </div>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-save me-2"></i> Salvar Novo Status
-                    </button>
                 </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0">Histórico de Atividades</h5>
+            </div>
+            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                <ul class="list-unstyled">
+                    {% for activity in ticket.atividades %}
+                    <li class="mb-2 pb-2 border-bottom">
+                        <small class="d-block text-muted">{{ activity.timestamp.strftime('%d/%m/%Y %H:%M') }} por {{ activity.user.nome }}</small>
+                        {{ activity.description }}
+                    </li>
+                    {% else %}
+                    <li>Nenhuma atividade registada.</li>
+                    {% endfor %}
+                </ul>
             </div>
         </div>
     </div>
