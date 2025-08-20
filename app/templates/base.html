@@ -183,6 +183,7 @@
                                 <b>4</b> - Problemas no Dashboard<br>
                                 <b>5</b> - Problemas no WhatsApp ou Email`;
             const topics = { '1': 'Suporte Técnico', '2': 'Problemas com Fatura', '3': 'Tirar Dúvidas', '4': 'Problemas no Dashboard', '5': 'Problemas no WhatsApp ou Email' };
+            
             function resetChat() {
                 chatState = 'awaiting_option';
                 selectedTopic = '';
@@ -195,24 +196,30 @@
                 chatInput.placeholder = 'Digite uma opção...';
                 chatInput.value = '';
             }
+            
             supportModal.addEventListener('show.bs.modal', resetChat);
+
             function addMessage(content, sender) {
-                const messageWrapper = document.createElement('div');
-                const messageBubble = document.createElement('div');
-                messageWrapper.classList.add('d-flex', 'mb-3');
-                messageBubble.classList.add('p-3', 'rounded');
-                messageBubble.innerHTML = content;
+                const wrapper = document.createElement('div');
+                wrapper.classList.add('chat-message-wrapper');
+
                 if (sender === 'user') {
-                    messageWrapper.classList.add('justify-content-end');
-                    messageBubble.classList.add('bg-primary', 'text-white');
+                    wrapper.classList.add('user-message');
+                    wrapper.innerHTML = `<div class="chat-bubble">${content}</div>`;
                 } else {
-                    messageWrapper.classList.add('justify-content-start');
-                    messageBubble.style.backgroundColor = '#f1f0f0';
+                    wrapper.classList.add('bot-message');
+                    wrapper.innerHTML = `
+                        <img src="{{ url_for('static', filename='images/bot_avatar.jpg') }}" alt="Bot Avatar" class="chat-avatar">
+                        <div class="chat-bubble">
+                            <strong class="d-block chat-sender-name">Arthur</strong>
+                            ${content}
+                        </div>
+                    `;
                 }
-                messageWrapper.appendChild(messageBubble);
-                chatMessages.appendChild(messageWrapper);
+                chatMessages.appendChild(wrapper);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
+
             async function createTicketFromChat() {
                 resolutionButtons.classList.add('d-none');
                 chatInput.disabled = true;
@@ -234,6 +241,7 @@
                     addMessage('Ocorreu um erro ao criar o ticket. Por favor, feche e tente novamente.', 'bot');
                 }
             }
+
             async function handleUserInput() {
                 const userInput = chatInput.value.trim();
                 if (!userInput) return;
@@ -284,13 +292,16 @@
                     }
                 }
             }
+            
             sendBtn.addEventListener('click', handleUserInput);
             chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleUserInput(); });
+            
             document.getElementById('btn-resolved').addEventListener('click', () => {
                 addMessage('Fico feliz em ajudar! Encerrando o chat.', 'bot');
                 resolutionButtons.classList.add('d-none');
                 chatInput.disabled = true;
             });
+            
             document.getElementById('btn-not-resolved').addEventListener('click', createTicketFromChat);
         });
     </script>

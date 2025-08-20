@@ -353,3 +353,48 @@ body {
 .footer p {
     color: #3e6a92;
 }
+
+/* --- ESTILOS PARA O CHAT DE SUPORTE COM AVATAR --- */
+.chat-message-wrapper {
+    display: flex;
+    margin-bottom: 1rem;
+    align-items: flex-end; /* Alinha o avatar com a base do balão */
+}
+
+.chat-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.chat-bubble {
+    padding: 10px 15px;
+    border-radius: 15px;
+    max-width: 80%;
+}
+
+.bot-message .chat-bubble {
+    background-color: #f1f0f0;
+    color: #212529;
+    border-top-left-radius: 0;
+}
+
+.user-message {
+    justify-content: flex-end;
+}
+
+.user-message .chat-bubble {
+    background-color: var(--primary-color);
+    color: white;
+    border-top-right-radius: 0;
+}
+
+.chat-sender-name {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 4px;
+}
