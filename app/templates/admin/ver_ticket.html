@@ -19,7 +19,7 @@
             <div class="card-body">
                 <p><strong>Empresa:</strong> {{ ticket.empresa.nome_empresa }}</p>
                 <p><strong>Enviado por:</strong> {{ ticket.remetente.nome }} ({{ ticket.remetente.email }})</p>
-                <p><strong>Data de Abertura:</strong> {{ ticket.data_criacao.strftime('%d/%m/%Y às %H:%M') }}</p>
+                <p><strong>Data de Abertura:</strong> {{ ticket.created_at.strftime('%d/%m/%Y às %H:%M') }}</p>
                 <hr>
                 <h6>Descrição do Problema:</h6>
                 <p class="bg-light p-3 rounded" style="white-space: pre-wrap;">{{ ticket.descricao }}</p>
@@ -39,7 +39,7 @@
                     <div class="flex-grow-1">
                         <div class="d-flex justify-content-between">
                             <strong>{{ anotacao.autor.nome }}</strong>
-                            <small class="text-muted">{{ anotacao.data_criacao.strftime('%d/%m/%Y %H:%M') }}</small>
+                            <small class="text-muted">{{ anotacao.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
                         </div>
                         <p style="white-space: pre-wrap;" class="mb-1">{{ anotacao.conteudo }}</p>
                         {% if not anotacao.is_solution and ticket.status == 'fechado' %}

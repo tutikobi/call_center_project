@@ -15,3 +15,12 @@ Resposta: Acesse a tela "Avaliação" no menu. Nela, você seleciona o agente qu
 
 Pergunta: não consigo logar qual a senha
 Resposta: O sistema não tem como recuperar sua senha antiga por segurança. Por favor, peça para o administrador da sua empresa ("admin_empresa") resetar sua senha na tela de "Gerenciar Usuários". Ele pode definir uma nova senha provisória para você.
+
+Pergunta: como vejo o historico de um agente especifico?
+Resposta: você pode ver na guia incial na aba dashboard, clicando no agente escolhido
+
+Pergunta: como vejo o historico de um agente especifico?
+Resposta: você pode ver na guia incial na aba dashboard, clicando no agente escolhido
+
+Pergunta: como vejo o historico de um agente especifico?
+Resposta: você pode ver na guia incial na aba dashboard, clicando no agente escolhido

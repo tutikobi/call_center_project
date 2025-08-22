@@ -4,10 +4,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from .models import db, Empresa, Usuario, TicketSuporte, ReputacaoHistorico, AnotacaoTicket, TicketAtividade
 from flask_login import login_required, current_user
 from functools import wraps
-import re
 from datetime import datetime
 import requests
-from .management import PLAN_LIMITS
 from .ai_service import add_to_knowledge_base
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -30,85 +28,6 @@ def log_ticket_activity(ticket_id, activity_type, description):
         description=description
     )
     db.session.add(activity)
-
-@bp.route('/historico/<int:id>/get_google_reviews')
-@login_required
-@admin_required
-def get_google_reviews(id):
-    empresa = Empresa.query.get_or_404(id)
-    sample_reviews = {
-        "reviews": [
-            { "reviewer": {"displayName": "Gabriela Bareta"}, "starRating": "FIVE", "comment": "Não tenho dúvidas que, colocar meu imóvel para alugar na Barcellos, foi a melhor escolha...", "reply": { "comment": "Queremos expressar nossa mais profunda gratidão..."}},
-            { "reviewer": {"displayName": "Carlos Silva"}, "starRating": "ONE", "comment": "Péssima experiência. O atendimento demorou e não resolveram o meu problema.", "reply": None}
-        ], "totalReviewCount": 215
-    }
-    return jsonify(sample_reviews)
-
-@bp.route('/historico/<int:id>/buscar_dados_reputacao')
-@login_required
-@admin_required
-def buscar_dados_reputacao(id):
-    from flask import current_app
-    empresa = Empresa.query.get_or_404(id)
-    api_key = current_app.config.get('GOOGLE_PLACES_API_KEY')
-    place_id = empresa.google_place_id
-    if not api_key or api_key == 'SUA_CHAVE_API_AQUI':
-        return jsonify({'error': 'A chave da API do Google não foi configurada no sistema.'}), 500
-    if not place_id:
-        return jsonify({'error': 'O "Google Place ID" desta empresa não foi configurado.'}), 400
-    url = f"https://maps.googleapis.com/maps/api/place/details/json?place_id={place_id}&fields=rating,user_ratings_total&key={api_key}&language=pt_BR"
-    dados_encontrados = {'nota_google': None, 'total_avaliacoes_google': None}
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        if data.get('status') == 'OK' and 'result' in data:
-            result = data['result']
-            dados_encontrados['nota_google'] = result.get('rating')
-            dados_encontrados['total_avaliacoes_google'] = result.get('user_ratings_total')
-        else:
-            return jsonify({'error': data.get('error_message', 'Erro ao comunicar com a API do Google.')}), 500
-    except requests.exceptions.RequestException as e:
-        return jsonify({'error': f'Falha na comunicação com o Google: {e}'}), 500
-    return jsonify(dados_encontrados)
-
-@bp.route('/historico/<int:id>')
-@login_required
-@admin_required
-def detalhes_empresa(id):
-    empresa = Empresa.query.get_or_404(id)
-    ultimo_registro = empresa.historico_reputacao[0] if empresa.historico_reputacao else None
-    limite_plano = PLAN_LIMITS.get(empresa.plano, 0)
-    historico_reverso = reversed(empresa.historico_reputacao)
-    labels = [h.data_registro.strftime('%d/%m/%Y') for h in historico_reverso]
-    historico_reverso = reversed(empresa.historico_reputacao)
-    notas_google = [h.nota_google for h in historico_reverso if h.nota_google is not None]
-    chart_data = {'labels': labels, 'datasets': [{'label': 'Nota Google', 'data': notas_google, 'borderColor': '#4285F4', 'backgroundColor': 'rgba(66, 133, 244, 0.2)', 'fill': True, 'tension': 0.1}]}
-    return render_template('admin/detalhes_empresa.html', empresa=empresa, page_title=f"Dashboard de Reputação: {empresa.nome_empresa}", ultimo_registro=ultimo_registro, chart_data=chart_data, limite_plano=limite_plano)
-
-@bp.route('/historico/<int:id>/adicionar_registro', methods=['POST'])
-@login_required
-@admin_required
-def adicionar_registro_reputacao(id):
-    empresa = Empresa.query.get_or_404(id)
-    try:
-        nota_google_str = request.form.get('nota_google')
-        total_avaliacoes_google_str = request.form.get('total_avaliacoes_google')
-        novo_registro = ReputacaoHistorico(empresa_id=empresa.id, nota_google=float(nota_google_str) if nota_google_str else None, total_avaliacoes_google=int(total_avaliacoes_google_str) if total_avaliacoes_google_str else None, observacoes="Registo via Verificador de Reputação.")
-        db.session.add(novo_registro)
-        db.session.commit()
-        flash('Novo registo de reputação confirmado e guardado com sucesso!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Erro ao adicionar registo: {e}', 'danger')
-    return redirect(url_for('admin.detalhes_empresa', id=id))
-
-@bp.route('/historico')
-@login_required
-@admin_required
-def historico_empresas():
-    empresas = Empresa.query.filter(Empresa.nome_empresa != "Sistema Call Center").order_by(Empresa.nome_empresa).all()
-    return render_template('admin/historico_empresas.html', empresas=empresas, page_title="Histórico e Infos de Empresas")
 
 @bp.route('/dashboard')
 @login_required
@@ -142,16 +61,38 @@ def nova_empresa():
         form_data = request.form
         data_vencimento_str = form_data.get('data_vencimento_pagamento')
         data_vencimento = datetime.strptime(data_vencimento_str, '%Y-%m-%d') if data_vencimento_str else None
-        nova_empresa = Empresa(nome_empresa=form_data.get('nome_empresa'), cnpj=form_data.get('cnpj'), plano=form_data.get('plano'), telefone_contato=form_data.get('telefone_contato'), responsavel_contrato=form_data.get('responsavel_contrato'), forma_pagamento=form_data.get('forma_pagamento'), data_vencimento_pagamento=data_vencimento, monitorar_reputacao=True if form_data.get('monitorar_reputacao') == 'y' else False, google_reviews_url=form_data.get('google_reviews_url'), reclame_aqui_url=form_data.get('reclame_aqui_url'), google_place_id=form_data.get('google_place_id'))
+        
+        nova_empresa = Empresa(
+            nome_empresa=form_data.get('nome_empresa'),
+            cnpj=form_data.get('cnpj'),
+            plano=form_data.get('plano'),
+            telefone_contato=form_data.get('telefone_contato'),
+            responsavel_contrato=form_data.get('responsavel_contrato'),
+            forma_pagamento=form_data.get('forma_pagamento'),
+            data_vencimento_pagamento=data_vencimento,
+            monitorar_reputacao=True if form_data.get('monitorar_reputacao') == 'y' else False,
+            google_reviews_url=form_data.get('google_reviews_url'),
+            reclame_aqui_url=form_data.get('reclame_aqui_url'),
+            google_place_id=form_data.get('google_place_id')
+        )
+        
         db.session.add(nova_empresa)
         db.session.commit()
-        novo_admin = Usuario(email=form_data.get('admin_email'), nome=form_data.get('admin_nome'), role='admin_empresa', empresa_id=nova_empresa.id)
+        
+        novo_admin = Usuario(
+            email=form_data.get('admin_email'),
+            nome=form_data.get('admin_nome'),
+            role='admin_empresa',
+            empresa_id=nova_empresa.id
+        )
         novo_admin.set_password(form_data.get('admin_senha'))
         db.session.add(novo_admin)
         db.session.commit()
+        
         flash(f'Empresa "{nova_empresa.nome_empresa}" criada com sucesso!', 'success')
         return redirect(url_for('admin.index'))
-    return render_template('admin/form_empresa.html', page_title="Nova Empresa")
+        
+    return render_template('admin/form_empresa.html', page_title="Nova Empresa", is_edit=False)
 
 @bp.route('/empresas/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
@@ -160,6 +101,7 @@ def editar_empresa(id):
     empresa = Empresa.query.get_or_404(id)
     if request.method == 'POST':
         form = request.form
+        
         empresa.nome_empresa = form.get('nome_empresa')
         empresa.cnpj = form.get('cnpj')
         empresa.plano = form.get('plano')
@@ -172,9 +114,32 @@ def editar_empresa(id):
         empresa.google_reviews_url = form.get('google_reviews_url')
         empresa.reclame_aqui_url = form.get('reclame_aqui_url')
         empresa.google_place_id = form.get('google_place_id')
+
+        novo_plano = empresa.plano
+        
+        if novo_plano == 'basico':
+            empresa.plano_rh = False
+            empresa.plano_ia = False
+            empresa.plano_api = False
+            empresa.plano_relatorios_avancados = False
+            empresa.plano_suporte_prioritario = False
+        elif novo_plano == 'medio':
+            empresa.plano_rh = True
+            empresa.plano_ia = False
+            empresa.plano_api = False
+            empresa.plano_relatorios_avancados = True
+            empresa.plano_suporte_prioritario = False
+        elif novo_plano == 'completo' or novo_plano == 'pro': # Incluindo 'pro' como completo
+            empresa.plano_rh = True
+            empresa.plano_ia = True
+            empresa.plano_api = True
+            empresa.plano_relatorios_avancados = True
+            empresa.plano_suporte_prioritario = True
+        
         db.session.commit()
         flash(f'Dados da empresa "{empresa.nome_empresa}" atualizados com sucesso!', 'success')
         return redirect(url_for('admin.index'))
+        
     return render_template('admin/form_empresa.html', page_title=f"Editar Empresa: {empresa.nome_empresa}", empresa=empresa, is_edit=True)
 
 @bp.route('/empresas/<int:id>/toggle_status', methods=['POST'])
@@ -207,6 +172,51 @@ def excluir_empresa(id):
     flash(f'A empresa "{empresa.nome_empresa}" e todos os seus dados foram excluídos permanentemente.', 'danger')
     return redirect(url_for('admin.index'))
 
+@bp.route('/historico')
+@login_required
+@admin_required
+def historico_empresas():
+    empresas = Empresa.query.filter(Empresa.nome_empresa != "Sistema Call Center").order_by(Empresa.nome_empresa).all()
+    return render_template('admin/historico_empresas.html', empresas=empresas, page_title="Histórico e Infos de Empresas")
+
+@bp.route('/historico/<int:id>')
+@login_required
+@admin_required
+def detalhes_empresa(id):
+    empresa = Empresa.query.get_or_404(id)
+    limite_plano = empresa.get_limite_usuarios()
+    ultimo_registro = empresa.historico_reputacao[0] if empresa.historico_reputacao else None
+
+    historico_reputacao_lista = list(empresa.historico_reputacao)
+    
+    labels = [h.data_registro.strftime('%d/%m/%Y') for h in reversed(historico_reputacao_lista)]
+    notas_google = [h.nota_google for h in reversed(historico_reputacao_lista) if h.nota_google is not None]
+
+    chart_data = {
+        'labels': labels,
+        'datasets': [{
+            'label': 'Nota Google', 'data': notas_google, 'borderColor': '#4285F4',
+            'backgroundColor': 'rgba(66, 133, 244, 0.2)', 'fill': True, 'tension': 0.1
+        }]
+    }
+    
+    return render_template(
+        'admin/detalhes_empresa.html', 
+        empresa=empresa, 
+        page_title=f"Dashboard de Reputação: {empresa.nome_empresa}", 
+        ultimo_registro=ultimo_registro, 
+        chart_data=chart_data, 
+        limite_plano=limite_plano
+    )
+
+@bp.route('/historico/<int:id>/get_google_reviews')
+@login_required
+@admin_required
+def get_google_reviews(id):
+    empresa = Empresa.query.get_or_404(id)
+    sample_reviews = { "reviews": [] } 
+    return jsonify(sample_reviews)
+
 @bp.route('/suporte')
 @login_required
 @admin_required
@@ -216,7 +226,7 @@ def listar_tickets():
     query = TicketSuporte.query
     if status_filtro != 'todos': query = query.filter_by(status=status_filtro)
     if prioridade_filtro != 'todas': query = query.filter_by(prioridade=prioridade_filtro)
-    tickets = query.order_by(TicketSuporte.data_criacao.desc()).all()
+    tickets = query.order_by(TicketSuporte.created_at.desc()).all()
     return render_template('admin/listar_tickets.html', tickets=tickets, page_title="Tickets de Suporte", status_filtro=status_filtro, prioridade_filtro=prioridade_filtro)
 
 @bp.route('/suporte/ticket/<int:id>')
@@ -282,7 +292,6 @@ def assign_ticket(id):
 def mark_solution(id):
     anotacao = AnotacaoTicket.query.get_or_404(id)
     ticket = anotacao.ticket
-
     AnotacaoTicket.query.filter_by(ticket_id=ticket.id, is_solution=True).update({'is_solution': False})
     
     anotacao.is_solution = True
@@ -298,8 +307,7 @@ def treinamento_ia():
     tickets_resolvidos = db.session.query(TicketSuporte).join(AnotacaoTicket).filter(
         TicketSuporte.status == 'fechado',
         AnotacaoTicket.is_solution == True
-    ).distinct().order_by(TicketSuporte.data_criacao.desc()).all()
-    
+    ).distinct().order_by(TicketSuporte.created_at.desc()).all()
     return render_template('admin/treinamento_ia.html', tickets=tickets_resolvidos, page_title="Treinamento da I.A.")
 
 @bp.route('/treinamento_ia/add_to_kb', methods=['POST'])
@@ -308,18 +316,15 @@ def treinamento_ia():
 def add_to_kb():
     ticket_id = request.form.get('ticket_id')
     ticket = TicketSuporte.query.get_or_404(ticket_id)
-    
     solucao = AnotacaoTicket.query.filter_by(ticket_id=ticket.id, is_solution=True).first()
     
     if not solucao:
         flash('Nenhuma solução marcada foi encontrada para este ticket.', 'danger')
-        return redirect(url_for('admin.treinamento_ia'))
-
-    sucesso = add_to_knowledge_base(ticket.descricao, solucao.conteudo)
-    
-    if sucesso:
-        flash('Novo conhecimento adicionado à I.A. com sucesso!', 'success')
     else:
-        flash('Ocorreu um erro ao tentar treinar a I.A.', 'danger')
-
+        sucesso = add_to_knowledge_base(ticket.descricao, solucao.conteudo)
+        if sucesso:
+            flash('Novo conhecimento adicionado à I.A. com sucesso!', 'success')
+        else:
+            flash('Ocorreu um erro ao tentar treinar a I.A.', 'danger')
+    
     return redirect(url_for('admin.treinamento_ia'))

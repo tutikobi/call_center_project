@@ -67,7 +67,7 @@
                         <tbody>
                             {% for avaliacao in ultimas_avaliacoes %}
                             <tr>
-                                <td>{{ avaliacao.data.strftime('%d/%m/%Y') }}</td>
+                                <td>{{ avaliacao.created_at.strftime('%d/%m/%Y') }}</td>
                                 <td><span class="badge {% if avaliacao.canal == 'whatsapp' %}bg-success{% else %}bg-primary{% endif %}">{{ avaliacao.canal | capitalize }}</span></td>
                                 <td>{{ avaliacao.csat }}</td>
                             </tr>

@@ -5,8 +5,6 @@ from .models import db, Avaliacao, ConversaWhatsApp, Usuario, Notificacao, Email
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from datetime import datetime, date, timedelta
-import random
-# A importação 'from . import socketio' foi REMOVIDA do topo do ficheiro
 
 bp = Blueprint('routes', __name__)
 
@@ -27,13 +25,15 @@ def dashboard():
     empresa_id_do_usuario = current_user.empresa_id
     total_avaliacoes = db.session.query(Avaliacao.id).filter_by(empresa_id=empresa_id_do_usuario).count()
     conversas_ativas = db.session.query(ConversaWhatsApp.id).filter_by(empresa_id=empresa_id_do_usuario, status='ativo').count()
-    csat_geral = db.session.query(func.avg(Avaliacao.csat)).filter_by(empresa_id=empresa_id_do_usuario).scalar() or 0
+    csat_geral_query = db.session.query(func.avg(Avaliacao.csat)).filter_by(empresa_id=empresa_id_do_usuario).scalar()
+    csat_geral = round(csat_geral_query, 1) if csat_geral_query else 'N/A'
+    
     agentes_online = Usuario.query.filter(Usuario.empresa_id == empresa_id_do_usuario, Usuario.role.in_(['agente', 'admin_empresa'])).order_by(Usuario.nome).all()
     
     return render_template("dashboard.html", 
                          total_avaliacoes=total_avaliacoes,
                          conversas_ativas=conversas_ativas,
-                         csat_geral=round(csat_geral, 1),
+                         csat_geral=csat_geral,
                          agentes_online=agentes_online)
 
 @bp.route("/dashboard/agente/<int:agente_id>")
@@ -50,7 +50,8 @@ def dashboard_agente(agente_id):
         return redirect(url_for('routes.dashboard'))
 
     total_avaliacoes = Avaliacao.query.filter_by(agente_id=agente.id).count()
-    csat_medio = db.session.query(func.avg(Avaliacao.csat)).filter_by(agente_id=agente.id).scalar() or 0.0
+    csat_medio_query = db.session.query(func.avg(Avaliacao.csat)).filter_by(agente_id=agente.id).scalar()
+    csat_medio = round(csat_medio_query, 1) if csat_medio_query else 'N/A'
     conversas_atribuidas = ConversaWhatsApp.query.filter_by(agente_atribuido_id=agente.id).count()
 
     atendimentos_por_canal = db.session.query(
@@ -62,12 +63,13 @@ def dashboard_agente(agente_id):
         'data': [item[1] for item in atendimentos_por_canal]
     }
 
-    ultimas_avaliacoes = Avaliacao.query.filter_by(agente_id=agente.id).order_by(Avaliacao.data.desc()).limit(5).all()
+    # --- CORREÇÃO APLICADA AQUI ---
+    ultimas_avaliacoes = Avaliacao.query.filter_by(agente_id=agente.id).order_by(Avaliacao.created_at.desc()).limit(5).all()
 
     return render_template("dashboard_agente.html",
                            agente=agente,
                            total_avaliacoes=total_avaliacoes,
-                           csat_medio=round(csat_medio, 1),
+                           csat_medio=csat_medio,
                            conversas_atribuidas=conversas_atribuidas,
                            chart_data=chart_data,
                            ultimas_avaliacoes=ultimas_avaliacoes)
@@ -98,6 +100,41 @@ def avaliar():
         return redirect(url_for("routes.dashboard"))
     
     return render_template("avaliar.html", agentes=agentes_da_empresa)
+
+@bp.route("/relatorios", methods=['GET', 'POST'])
+@login_required
+def relatorios():
+    agentes = Usuario.query.filter_by(empresa_id=current_user.empresa_id).order_by(Usuario.nome).all()
+    dados_relatorio = None
+    filtros_aplicados = {}
+    if request.method == 'POST':
+        periodo = request.form.get('periodo')
+        canal = request.form.get('canal')
+        agente_id = request.form.get('agente')
+        filtros_aplicados = {'periodo': periodo, 'canal': canal, 'agente_id': agente_id}
+        query = Avaliacao.query.filter_by(empresa_id=current_user.empresa_id)
+        if periodo and periodo != 'todos':
+            try:
+                dias = int(periodo.replace('d', ''))
+                data_inicio = datetime.utcnow() - timedelta(days=dias)
+                query = query.filter(Avaliacao.created_at >= data_inicio) # --- CORREÇÃO APLICADA AQUI ---
+            except ValueError:
+                pass 
+        if canal and canal != 'todos':
+            query = query.filter_by(canal=canal)
+        if agente_id and agente_id != 'todos':
+            query = query.filter_by(agente_id=int(agente_id))
+        
+        # --- CORREÇÃO APLICADA AQUI ---
+        dados_relatorio = query.order_by(Avaliacao.created_at.desc()).all()
+
+    return render_template("relatorios.html", 
+        agentes=agentes, 
+        dados_relatorio=dados_relatorio,
+        filtros=filtros_aplicados
+    )
+
+# ... (o resto do ficheiro 'routes.py' continua igual) ...
 
 @bp.route("/conversas")
 @login_required
@@ -150,7 +187,7 @@ def atribuir_conversa(conversa_id):
 @bp.route("/emails")
 @login_required
 def emails():
-    if current_user.empresa.plano not in ['medio', 'pro', 'premium']:
+    if current_user.empresa.plano not in ['medio', 'pro', 'premium', 'completo', 'customizado']:
         flash("O seu plano não tem acesso à funcionalidade de Email.", "warning")
         return redirect(url_for('routes.dashboard'))
 
@@ -217,7 +254,7 @@ def ver_email(email_id):
 @bp.route("/emails/agente/<int:agente_id>/alertar")
 @login_required
 def alertar_agente(agente_id):
-    from . import socketio # --- IMPORTAÇÃO MOVIDA PARA AQUI ---
+    from . import socketio
     
     if current_user.role != 'admin_empresa':
         flash("Apenas administradores podem enviar alertas.", "danger")
@@ -244,7 +281,7 @@ def alertar_agente(agente_id):
 @bp.route('/notificacoes/nao_lidas')
 @login_required
 def get_notificacoes_nao_lidas():
-    notificacoes = Notificacao.query.filter_by(usuario_id=current_user.id, lida=False).order_by(Notificacao.data_criacao.desc()).all()
+    notificacoes = Notificacao.query.filter_by(usuario_id=current_user.id, lida=False).order_by(Notificacao.created_at.desc()).all()
     resultado = [
         {'id': n.id, 'mensagem': n.mensagem, 'remetente': n.remetente_nome} 
         for n in notificacoes
@@ -261,33 +298,3 @@ def marcar_como_lidas():
     except Exception as e:
         db.session.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
-
-@bp.route("/relatorios", methods=['GET', 'POST'])
-@login_required
-def relatorios():
-    agentes = Usuario.query.filter_by(empresa_id=current_user.empresa_id).order_by(Usuario.nome).all()
-    dados_relatorio = None
-    filtros_aplicados = {}
-    if request.method == 'POST':
-        periodo = request.form.get('periodo')
-        canal = request.form.get('canal')
-        agente_id = request.form.get('agente')
-        filtros_aplicados = {'periodo': periodo, 'canal': canal, 'agente_id': agente_id}
-        query = Avaliacao.query.filter_by(empresa_id=current_user.empresa_id)
-        if periodo and periodo != 'todos':
-            try:
-                dias = int(periodo.replace('d', ''))
-                data_inicio = datetime.utcnow() - timedelta(days=dias)
-                query = query.filter(Avaliacao.data >= data_inicio)
-            except ValueError:
-                pass 
-        if canal and canal != 'todos':
-            query = query.filter_by(canal=canal)
-        if agente_id and agente_id != 'todos':
-            query = query.filter_by(agente_id=int(agente_id))
-        dados_relatorio = query.order_by(Avaliacao.data.desc()).all()
-    return render_template("relatorios.html", 
-        agentes=agentes, 
-        dados_relatorio=dados_relatorio,
-        filtros=filtros_aplicados
-    )

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard RH{% endblock %}
+
+{% block content %}
+<h1 class="h2 mb-4">Dashboard RH</h1>
+<p class="text-muted">Visão geral do departamento de Recursos Humanos.</p>
+
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon bg-primary"><i class="fas fa-users"></i></div>
+            <div class="metric-content">
+                <div class="metric-value">{{ total_funcionarios }}</div>
+                <div class="metric-label">Total de Funcionários Ativos</div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                Ações Rápidas
+            </div>
+            <div class="card-body">
+                <a href="{{ url_for('rh.listar_funcionarios') }}" class="btn btn-info">
+                    <i class="fas fa-user-friends me-2"></i>Ver Funcionários
+                </a>
+                <a href="{{ url_for('rh.novo_funcionario') }}" class="btn btn-success">
+                    <i class="fas fa-user-plus me-2"></i>Novo Funcionário
+                </a>
+                </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
