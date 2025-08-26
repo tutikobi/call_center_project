@@ -19,14 +19,16 @@ class Empresa(BaseModel):
     cnpj = db.Column(db.String(18), unique=True, nullable=False)
     status_assinatura = db.Column(db.String(20), default='ativa')
     
-    # --- CAMPOS ADICIONADOS DE VOLTA PARA CORREÇÃO ---
     telefone_contato = db.Column(db.String(20), nullable=True)
     responsavel_contrato = db.Column(db.String(150), nullable=True)
     data_vencimento_pagamento = db.Column(db.DateTime, nullable=True)
     forma_pagamento = db.Column(db.String(50), default='boleto')
     monitorar_reputacao = db.Column(db.Boolean, default=False)
     google_reviews_url = db.Column(db.String(255), nullable=True)
-    reclame_aqui_url = db.Column(db.String(255), nullable=True)
+    
+    # --- CORREÇÃO APLICADA AQUI ---
+    reclame_a_qui_url = db.Column(db.String(255), nullable=True)
+    
     google_place_id = db.Column(db.String(255), nullable=True)
     whatsapp_token = db.Column(db.String(255), nullable=True)
     whatsapp_url = db.Column(db.String(255), nullable=True)
@@ -34,7 +36,6 @@ class Empresa(BaseModel):
     status_pagamento = db.Column(db.String(20), nullable=False, default='em_dia')
     duracao_contrato_meses = db.Column(db.Integer, default=12)
 
-    # NOVO: Sistema de planos
     plano = db.Column(db.String(20), default='basico')
     plano_email = db.Column(db.Boolean, default=True)
     plano_whatsapp = db.Column(db.Boolean, default=True)
@@ -44,13 +45,11 @@ class Empresa(BaseModel):
     plano_relatorios_avancados = db.Column(db.Boolean, default=False)
     plano_suporte_prioritario = db.Column(db.Boolean, default=False)
     
-    # NOVO: Dados comerciais
     data_contrato = db.Column(db.DateTime, default=datetime.utcnow)
     valor_mensal = db.Column(db.Float, default=0.0)
     max_usuarios = db.Column(db.Integer, default=10)
     max_tickets_mes = db.Column(db.Integer, default=500)
     
-    # Relacionamentos
     usuarios = db.relationship('Usuario', backref='empresa', lazy=True, cascade="all, delete-orphan")
     avaliacoes = db.relationship('Avaliacao', backref='empresa', lazy=True, cascade="all, delete-orphan")
     conversas = db.relationship('ConversaWhatsApp', backref='empresa', lazy=True, cascade="all, delete-orphan")
@@ -95,11 +94,13 @@ class Usuario(UserMixin, BaseModel):
     status = db.Column(db.String(20), default='ativo')
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
     
+    departamento_id = db.Column(db.Integer, db.ForeignKey('departamentos.id'), nullable=True)
+    status_agente = db.Column(db.String(50), default='Disponível')
+    
     ultimo_login = db.Column(db.DateTime)
     foto_perfil = db.Column(db.String(255))
     telefone = db.Column(db.String(20))
     cargo = db.Column(db.String(50))
-    departamento = db.Column(db.String(50))
     
     avaliacoes = db.relationship('Avaliacao', backref='agente', lazy=True)
     conversas_atribuidas = db.relationship('ConversaWhatsApp', backref='agente_atribuido', lazy=True, foreign_keys='ConversaWhatsApp.agente_atribuido_id')
@@ -148,6 +149,8 @@ class ConversaWhatsApp(BaseModel):
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
     mensagens = db.relationship('MensagemWhatsApp', backref='conversa', lazy=True, cascade="all, delete-orphan", order_by='MensagemWhatsApp.timestamp')
     agente_atribuido_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
+    assunto = db.Column(db.String(100), nullable=True, default='Geral')
+
 
 class MensagemWhatsApp(BaseModel):
     __tablename__ = 'mensagem_whats_app'

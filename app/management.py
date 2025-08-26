@@ -2,6 +2,8 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from .models import db, Usuario, Empresa, TicketSuporte
+# --- ALTERAÇÃO 1: IMPORTAR O MODELO DE DEPARTAMENTO ---
+from .models_rh import Departamento
 from flask_login import login_required, current_user
 from functools import wraps
 from .ai_service import load_knowledge_base, get_ai_response
@@ -51,6 +53,8 @@ def novo_usuario():
         whatsapp = request.form.get('whatsapp_numero')
         senha = request.form.get('senha')
         role = request.form.get('role', 'agente')
+        # --- ALTERAÇÃO 2: OBTER O DEPARTAMENTO DO FORMULÁRIO ---
+        departamento_id = request.form.get('departamento_id')
         
         if not all([nome, email, senha, whatsapp]):
             flash('Todos os campos são obrigatórios.', 'warning')
@@ -60,14 +64,24 @@ def novo_usuario():
             flash(f'O email "{email}" já está em uso.', 'danger')
             return render_template('management/form_usuario.html', page_title="Novo Usuário", form_data=request.form)
         
-        novo_usuario = Usuario(nome=nome, email=email, whatsapp_numero=whatsapp, role=role, empresa_id=current_user.empresa_id)
+        # --- ALTERAÇÃO 3: ADICIONAR O DEPARTAMENTO AO NOVO USUÁRIO ---
+        novo_usuario = Usuario(
+            nome=nome, 
+            email=email, 
+            whatsapp_numero=whatsapp, 
+            role=role, 
+            empresa_id=current_user.empresa_id,
+            departamento_id=int(departamento_id) if departamento_id else None
+        )
         novo_usuario.set_password(senha)
         db.session.add(novo_usuario)
         db.session.commit()
         flash(f'Usuário "{nome}" criado com sucesso!', 'success')
         return redirect(url_for('management.listar_usuarios'))
-        
-    return render_template('management/form_usuario.html', page_title="Novo Usuário")
+    
+    # --- ALTERAÇÃO 4: BUSCAR DEPARTAMENTOS PARA ENVIAR AO TEMPLATE ---
+    departamentos = Departamento.query.filter_by(empresa_id=current_user.empresa_id).order_by(Departamento.nome).all()
+    return render_template('management/form_usuario.html', page_title="Novo Usuário", departamentos=departamentos)
 
 @bp.route('/usuarios/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
@@ -81,6 +95,9 @@ def editar_usuario(id):
     if request.method == 'POST':
         usuario.nome = request.form.get('nome')
         usuario.role = request.form.get('role')
+        # --- ALTERAÇÃO 5: ATUALIZAR O DEPARTAMENTO ---
+        departamento_id = request.form.get('departamento_id')
+        usuario.departamento_id = int(departamento_id) if departamento_id else None
 
         if current_user.role != 'super_admin':
             if usuario.email != request.form.get('email') or usuario.whatsapp_numero != request.form.get('whatsapp_numero'):
@@ -95,8 +112,10 @@ def editar_usuario(id):
         db.session.commit()
         flash(f'Dados do usuário "{usuario.nome}" atualizados com sucesso!', 'success')
         return redirect(url_for('management.listar_usuarios'))
-        
-    return render_template('management/form_usuario.html', page_title=f"Editar Usuário: {usuario.nome}", usuario=usuario, is_edit=True)
+    
+    # --- ALTERAÇÃO 6: BUSCAR DEPARTAMENTOS PARA ENVIAR AO TEMPLATE ---
+    departamentos = Departamento.query.filter_by(empresa_id=current_user.empresa_id).order_by(Departamento.nome).all()
+    return render_template('management/form_usuario.html', page_title=f"Editar Usuário: {usuario.nome}", usuario=usuario, is_edit=True, departamentos=departamentos)
 
 @bp.route('/usuarios/<int:id>/toggle_status', methods=['POST'])
 @login_required

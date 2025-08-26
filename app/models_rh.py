@@ -32,17 +32,12 @@ class Funcionario(BaseModel):
     data_demissao = db.Column(db.Date, nullable=True)
     status = db.Column(db.String(20), default='ativo')
     
-    # Relacionamento com empresa
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
     
-    # Relacionamentos
     cargo = db.relationship('Cargo', backref='funcionarios')
     pontos = db.relationship('ControlePonto', backref='funcionario', lazy='dynamic')
     avaliacoes = db.relationship('AvaliacaoDesempenho', backref='funcionario', lazy='dynamic', foreign_keys='AvaliacaoDesempenho.funcionario_id')
     folhas = db.relationship('FolhaPagamento', backref='funcionario', lazy='dynamic')
-    
-    # --- CORREÇÃO APLICADA AQUI ---
-    # O relacionamento com Departamento agora especifica qual chave estrangeira usar
     departamento = db.relationship('Departamento', foreign_keys=[departamento_id], back_populates='funcionarios')
 
 
@@ -62,15 +57,13 @@ class Departamento(BaseModel):
     gestor_id = db.Column(db.Integer, db.ForeignKey('funcionarios.id'), nullable=True)
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
     
-    # --- CORREÇÃO APLICADA AQUI ---
-    # Dividimos o backref em duas partes explícitas: 'funcionarios' e 'gestor'
-    # 'funcionarios' usa a foreign key de Funcionario.departamento_id
     funcionarios = db.relationship('Funcionario', foreign_keys='Funcionario.departamento_id', back_populates='departamento')
-    # 'gestor' usa a foreign key de Departamento.gestor_id
-    gestor = db.relationship('Funcionario', foreign_keys=[gestor_id])
+    
+    # --- CORREÇÃO APLICADA AQUI ---
+    # O 'post_update=True' resolve a dependência circular para o Alembic
+    gestor = db.relationship('Funcionario', foreign_keys=[gestor_id], post_update=True)
 
 
-# (O restante do arquivo continua igual)
 class ControlePonto(BaseModel):
     __tablename__ = 'controle_ponto'
     funcionario_id = db.Column(db.Integer, db.ForeignKey('funcionarios.id'), nullable=False)
@@ -111,15 +104,3 @@ class FolhaPagamento(BaseModel):
     vale_transporte = db.Column(db.Numeric(10, 2), default=0)
     vale_refeicao = db.Column(db.Numeric(10, 2), default=0)
     total_proventos = db.Column(db.Numeric(10, 2), default=0)
-    total_descontos = db.Column(db.Numeric(10, 2), default=0)
-    salario_liquido = db.Column(db.Numeric(10, 2), default=0)
-    dias_trabalhados = db.Column(db.Integer, default=0)
-
-class BeneficioFuncionario(BaseModel):
-    __tablename__ = 'beneficios_funcionarios'
-    funcionario_id = db.Column(db.Integer, db.ForeignKey('funcionarios.id'), nullable=False)
-    tipo_beneficio = db.Column(db.String(50), nullable=False)
-    valor = db.Column(db.Numeric(10, 2), nullable=False)
-    ativo = db.Column(db.Boolean, default=True)
-    data_inicio = db.Column(db.Date, nullable=False)
-    data_fim = db.Column(db.Date, nullable=True)

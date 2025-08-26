@@ -72,7 +72,8 @@ def nova_empresa():
             data_vencimento_pagamento=data_vencimento,
             monitorar_reputacao=True if form_data.get('monitorar_reputacao') == 'y' else False,
             google_reviews_url=form_data.get('google_reviews_url'),
-            reclame_aqui_url=form_data.get('reclame_aqui_url'),
+            # --- CORREÇÃO APLICADA AQUI ---
+            reclame_a_qui_url=form_data.get('reclame_aqui_url'),
             google_place_id=form_data.get('google_place_id')
         )
         
@@ -112,7 +113,8 @@ def editar_empresa(id):
         empresa.data_vencimento_pagamento = datetime.strptime(data_vencimento_str, '%Y-%m-%d') if data_vencimento_str else None
         empresa.monitorar_reputacao = True if form.get('monitorar_reputacao') == 'y' else False
         empresa.google_reviews_url = form.get('google_reviews_url')
-        empresa.reclame_aqui_url = form.get('reclame_aqui_url')
+        # --- CORREÇÃO APLICADA AQUI ---
+        empresa.reclame_a_qui_url = form.get('reclame_aqui_url')
         empresa.google_place_id = form.get('google_place_id')
 
         novo_plano = empresa.plano

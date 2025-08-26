@@ -19,6 +19,9 @@
                 <i class="fas fa-tachometer-alt fa-fw me-2"></i> Dashboard
             </a>
             {% if current_user.role != 'super_admin' %}
+                <a class="nav-link {% if request.endpoint == 'routes.whatsapp_dashboard' %}active{% endif %}" href="{{ url_for('routes.whatsapp_dashboard') }}">
+                    <i class="fas fa-chart-line fa-fw me-2"></i> Produtividade
+                </a>
                 <a class="nav-link {% if request.endpoint == 'routes.conversas' %}active{% endif %}" href="{{ url_for('routes.conversas') }}">
                     <i class="fas fa-comments fa-fw me-2"></i> Conversas WhatsApp
                 </a>

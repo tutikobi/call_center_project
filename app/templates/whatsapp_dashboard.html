@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard de Produtividade - WhatsApp{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h2 mb-0">Sistema de Produtividade - Agentes</h1>
+        <p class="text-muted mb-0">Monitoramento em Tempo Real | Atendimentos WhatsApp</p>
+    </div>
+    <div class="text-end">
+        <h6 class="h5 mb-0" id="current-time">--:--:--</h6>
+        <small class="text-muted">Última atualização: <span id="last-update">--:--:--</span></small>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-muted card-title">Atendimentos Hoje</h6>
+                    <h2 class="mb-0" id="total-atendimentos">0</h2>
+                    <small class="text-success" id="atendimentos-comp">
+                        <i class="fas fa-arrow-up"></i> 0% vs ontem
+                    </small>
+                </div>
+                <div class="metric-icon bg-info rounded-circle">
+                    <i class="fas fa-headset"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-muted card-title">TMA (Tempo Médio)</h6>
+                    <h2 class="mb-0" id="tma">00:00</h2>
+                    <small class="text-danger" id="tma-comp">
+                        <i class="fas fa-arrow-down"></i> 0% vs meta
+                    </small>
+                </div>
+                <div class="metric-icon bg-success rounded-circle">
+                    <i class="fas fa-clock"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-muted card-title">Fila de Atendimentos</h6>
+                    <h2 class="mb-0" id="fila-total">0</h2>
+                     <small class="text-muted">Aguardando</small>
+                </div>
+                <div class="metric-icon bg-warning rounded-circle">
+                    <i class="fas fa-users"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-muted card-title">Satisfação Cliente</h6>
+                    <h2 class="mb-0" id="csat-geral">0.0</h2>
+                    <small class="text-muted">
+                        <i class="fas fa-star text-warning"></i> Meta: 4.5
+                    </small>
+                </div>
+                <div class="metric-icon bg-danger rounded-circle">
+                    <i class="fas fa-heart"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Status dos Agentes (Tempo Real)</h5>
+            </div>
+            <div class="card-body" id="agentes-list">
+                <p class="text-center text-muted p-5">Carregando dados dos agentes...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Fila de Atendimentos</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush" id="fila-list">
+                     <li class="list-group-item text-center text-muted p-4">Fila vazia.</li>
+                </ul>
+                <div class="text-center mt-3">
+                    <h4 id="total-na-fila">0</h4>
+                    <p class="text-muted mb-0">Total na fila</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const timeEl = document.getElementById('current-time');
+    const lastUpdateEl = document.getElementById('last-update');
+    // --- ALTERAÇÃO 1: CONECTAR AO SOCKET.IO ---
+    const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+    function updateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('pt-BR');
+        timeEl.textContent = timeString;
+    }
+    setInterval(updateTime, 1000);
+    updateTime();
+
+    async function fetchData() {
+        try {
+            const response = await fetch("{{ url_for('api.dados_produtividade') }}");
+            if (!response.ok) {
+                throw new Error('Falha ao buscar dados da API.');
+            }
+            const data = await response.json();
+
+            const now = new Date();
+            lastUpdateEl.textContent = now.toLocaleTimeString('pt-BR');
+
+            // Preenche as métricas gerais
+            document.getElementById('total-atendimentos').textContent = data.totalAtendimentos;
+            document.getElementById('tma').textContent = data.tma;
+            document.getElementById('fila-total').textContent = data.fila.length;
+            document.getElementById('csat-geral').textContent = data.csatGeral.toFixed(1);
+
+            // Preenche a lista de agentes
+            const agentesList = document.getElementById('agentes-list');
+            agentesList.innerHTML = ''; 
+            if (data.agentes.length === 0) {
+                agentesList.innerHTML = '<p class="text-center text-muted p-5">Nenhum agente encontrado.</p>';
+            } else {
+                data.agentes.forEach(agente => {
+                    const statusBadge = {
+                        'Atendendo': 'bg-success',
+                        'Disponível': 'bg-primary',
+                        'Ocupado': 'bg-warning text-dark',
+                        'Pausa': 'bg-secondary'
+                    }[agente.status] || 'bg-light text-dark';
+
+                    const agenteHtml = `
+                        <div class="d-flex align-items-center border-bottom py-2">
+                            <div class="flex-shrink-0 me-3">
+                                <div class="agent-avatar" style="background-color: #6c757d;">${agente.nome.substring(0, 2).toUpperCase()}</div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0">${agente.nome}</h6>
+                                <small class="text-muted">${agente.setor}</small>
+                            </div>
+                            <div class="text-end me-4">
+                                <strong>${agente.atendimentos} atendimentos</strong>
+                                <div class="text-muted small">TMA: ${agente.tma}</div>
+                            </div>
+                            <div>
+                                <span class="badge ${statusBadge} p-2">${agente.status}</span>
+                            </div>
+                        </div>
+                    `;
+                    agentesList.innerHTML += agenteHtml;
+                });
+            }
+
+            // Preenche a fila de atendimentos
+            const filaList = document.getElementById('fila-list');
+            filaList.innerHTML = '';
+            if (data.fila.length === 0) {
+                filaList.innerHTML = '<li class="list-group-item text-center text-muted p-4">Fila vazia.</li>';
+            } else {
+                data.fila.forEach(item => {
+                    const filaHtml = `
+                        <li class="list-group-item d-flex justify-content-between align-items-center border-danger" style="border-left-width: 4px;">
+                            <div>
+                                <strong>${item.assunto}</strong>
+                                <small class="d-block text-muted">${item.cliente}</small>
+                            </div>
+                            <span class="badge bg-light text-dark">${item.tempo}</span>
+                        </li>
+                    `;
+                    filaList.innerHTML += filaHtml;
+                });
+            }
+            document.getElementById('total-na-fila').textContent = data.fila.length;
+
+        } catch (error) {
+            console.error("Erro ao carregar dados do dashboard:", error);
+            document.getElementById('agentes-list').innerHTML = '<p class="text-center text-danger p-5">Erro ao carregar os dados.</p>';
+        }
+    }
+
+    // --- ALTERAÇÃO 2: OUVIR O EVENTO DE ATUALIZAÇÃO ---
+    socket.on('atualizar_dashboard', function() {
+        console.log('Recebido evento para atualizar o dashboard!');
+        fetchData();
+    });
+
+    // Carga inicial
+    fetchData();
+});
+</script>
+{% endblock %}

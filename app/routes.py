@@ -63,7 +63,6 @@ def dashboard_agente(agente_id):
         'data': [item[1] for item in atendimentos_por_canal]
     }
 
-    # --- CORREÇÃO APLICADA AQUI ---
     ultimas_avaliacoes = Avaliacao.query.filter_by(agente_id=agente.id).order_by(Avaliacao.created_at.desc()).limit(5).all()
 
     return render_template("dashboard_agente.html",
@@ -117,7 +116,7 @@ def relatorios():
             try:
                 dias = int(periodo.replace('d', ''))
                 data_inicio = datetime.utcnow() - timedelta(days=dias)
-                query = query.filter(Avaliacao.created_at >= data_inicio) # --- CORREÇÃO APLICADA AQUI ---
+                query = query.filter(Avaliacao.created_at >= data_inicio)
             except ValueError:
                 pass 
         if canal and canal != 'todos':
@@ -125,7 +124,6 @@ def relatorios():
         if agente_id and agente_id != 'todos':
             query = query.filter_by(agente_id=int(agente_id))
         
-        # --- CORREÇÃO APLICADA AQUI ---
         dados_relatorio = query.order_by(Avaliacao.created_at.desc()).all()
 
     return render_template("relatorios.html", 
@@ -133,8 +131,6 @@ def relatorios():
         dados_relatorio=dados_relatorio,
         filtros=filtros_aplicados
     )
-
-# ... (o resto do ficheiro 'routes.py' continua igual) ...
 
 @bp.route("/conversas")
 @login_required
@@ -298,3 +294,14 @@ def marcar_como_lidas():
     except Exception as e:
         db.session.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# --- ROTA ADICIONADA ---
+@bp.route("/whatsapp_dashboard")
+@login_required
+def whatsapp_dashboard():
+    """Exibe o dashboard de produtividade do WhatsApp."""
+    if current_user.role == 'super_admin':
+        return redirect(url_for('admin.dashboard'))
+    
+    # Futuramente, esta rota pode ter lógicas diferentes para admin e agente
+    return render_template("whatsapp_dashboard.html")

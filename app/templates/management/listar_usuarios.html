@@ -19,6 +19,7 @@
                         <th>Nome</th>
                         <th>Email</th>
                         <th>Cargo</th>
+                        <th>Setor</th>
                         <th>Status</th>
                         <th class="text-end">Ações</th>
                     </tr>
@@ -36,6 +37,13 @@
                             {% endif %}
                         </td>
                         <td>
+                            {% if usuario.departamento_id and usuario.empresa.plano_rh %}
+                                {{ usuario.departamento.nome }}
+                            {% else %}
+                                <span class="text-muted">N/D</span>
+                            {% endif %}
+                        </td>
+                        <td>
                             {% if usuario.status == 'ativo' %}
                                 <span class="badge bg-success">Ativo</span>
                             {% else %}
@@ -43,9 +51,7 @@
                             {% endif %}
                         </td>
                         <td class="text-end">
-                            <!-- Impede que o admin edite a si mesmo na lista -->
                             {% if usuario.id != current_user.id %}
-                                <!-- Botão de Bloquear/Desbloquear -->
                                 <form action="{{ url_for('management.toggle_status_usuario', id=usuario.id) }}" method="POST" class="d-inline">
                                     <button type="submit" class="btn btn-sm {% if usuario.status == 'ativo' %}btn-outline-warning{% else %}btn-outline-success{% endif %}" title="{% if usuario.status == 'ativo' %}Bloquear Acesso{% else %}Reativar Acesso{% endif %}">
                                         <i class="fas {% if usuario.status == 'ativo' %}fa-lock{% else %}fa-lock-open{% endif %}"></i>
@@ -53,14 +59,11 @@
                                 </form>
                             {% endif %}
 
-                            <!-- Botão de Editar -->
                             <a href="{{ url_for('management.editar_usuario', id=usuario.id) }}" class="btn btn-sm btn-outline-primary" title="Editar Usuário">
                                 <i class="fas fa-pencil-alt"></i>
                             </a>
 
-                            <!-- Impede que o admin exclua a si mesmo na lista -->
                             {% if usuario.id != current_user.id %}
-                                <!-- Botão de Excluir com Modal de Confirmação -->
                                 <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal" data-user-id="{{ usuario.id }}" data-user-name="{{ usuario.nome }}" title="Excluir Usuário">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
@@ -69,7 +72,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="5" class="text-center text-muted">Nenhum usuário encontrado.</td>
+                        <td colspan="6" class="text-center text-muted">Nenhum usuário encontrado.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -78,7 +81,6 @@
     </div>
 </div>
 
-<!-- Modal de Confirmação de Exclusão -->
 <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -103,7 +105,6 @@
 
 {% block scripts %}
 <script>
-// Script para popular o modal de confirmação com os dados corretos do usuário
 document.addEventListener('DOMContentLoaded', function () {
     var confirmDeleteModal = document.getElementById('confirmDeleteModal');
     confirmDeleteModal.addEventListener('show.bs.modal', function (event) {
