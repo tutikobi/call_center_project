@@ -295,7 +295,6 @@ def marcar_como_lidas():
         db.session.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-# --- ROTA ADICIONADA ---
 @bp.route("/whatsapp_dashboard")
 @login_required
 def whatsapp_dashboard():
@@ -303,5 +302,19 @@ def whatsapp_dashboard():
     if current_user.role == 'super_admin':
         return redirect(url_for('admin.dashboard'))
     
-    # Futuramente, esta rota pode ter lógicas diferentes para admin e agente
     return render_template("whatsapp_dashboard.html")
+
+# --- NOVA ROTA PARA A PÁGINA DE DETALHES DE PRODUTIVIDADE DO AGENTE ---
+@bp.route("/produtividade/agente/<int:agente_id>")
+@login_required
+def produtividade_agente(agente_id):
+    if current_user.role != 'admin_empresa':
+        flash("Acesso não permitido.", "danger")
+        return redirect(url_for('routes.whatsapp_dashboard'))
+
+    agente = Usuario.query.get_or_404(agente_id)
+    if agente.empresa_id != current_user.empresa_id:
+        flash("Agente não encontrado.", "danger")
+        return redirect(url_for('routes.whatsapp_dashboard'))
+
+    return render_template("produtividade_agente.html", agente=agente)

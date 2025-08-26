@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1 class="h2 mb-4">{{ title }}</h1>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label for="nome" class="form-label">Nome do Departamento</label>
+                <input type="text" class="form-control" id="nome" name="nome" value="{{ departamento.nome if departamento else '' }}" required>
+            </div>
+            <div class="mb-3">
+                <label for="descricao" class="form-label">Descrição (Opcional)</label>
+                <textarea class="form-control" id="descricao" name="descricao" rows="3">{{ departamento.descricao if departamento else '' }}</textarea>
+            </div>
+            <div class="d-flex justify-content-end mt-4">
+                <a href="{{ url_for('rh.listar_departamentos') }}" class="btn btn-secondary me-2">Cancelar</a>
+                <button type="submit" class="btn btn-success">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

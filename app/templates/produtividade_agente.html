@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Produtividade de {{ agente.nome }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Detalhes de Produtividade: {{ agente.nome }}</h1>
+    <a href="{{ url_for('routes.whatsapp_dashboard') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i> Voltar ao Dashboard
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                Métricas de Hoje
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Atendimentos</span>
+                    <strong id="agente-atendimentos" class="h4 mb-0">0</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Tempo Médio de Atendimento</span>
+                    <strong id="agente-tma" class="h4 mb-0">00:00</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Status Atual</span>
+                    <span id="agente-status" class="badge bg-secondary p-2">Carregando...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                Top 5 Assuntos Atendidos Hoje
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <div style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="graficoAssuntos"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const agenteId = {{ agente.id }};
+    // --- ALTERAÇÃO 2: MANTER UMA REFERÊNCIA AO GRÁFICO PARA ATUALIZAÇÕES ---
+    let assuntosChart = null;
+
+    function fetchData() {
+        fetch("{{ url_for('api.dados_produtividade') }}")
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro na resposta da rede');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const agenteData = data.agentes.find(a => a.id === agenteId);
+                
+                if (agenteData) {
+                    // Atualiza as métricas de texto
+                    document.getElementById('agente-atendimentos').textContent = agenteData.atendimentos;
+                    document.getElementById('agente-tma').textContent = agenteData.tma;
+                    
+                    const statusEl = document.getElementById('agente-status');
+                    statusEl.textContent = agenteData.status;
+                    const statusBadge = {
+                        'Atendendo': 'bg-success',
+                        'Disponível': 'bg-primary',
+                        'Ocupado': 'bg-warning text-dark',
+                        'Pausa': 'bg-secondary'
+                    }[agenteData.status] || 'bg-light text-dark';
+                    statusEl.className = `badge ${statusBadge} p-2`;
+
+                    // --- ALTERAÇÃO 3: LÓGICA PARA CRIAR OU ATUALIZAR O GRÁFICO ---
+                    const ctx = document.getElementById('graficoAssuntos').getContext('2d');
+                    const canvasContainer = ctx.canvas.parentElement;
+
+                    if (agenteData.top_assuntos && agenteData.top_assuntos.length > 0) {
+                        canvasContainer.style.display = 'block';
+                        const labels = agenteData.top_assuntos.map(item => item.assunto);
+                        const chartData = agenteData.top_assuntos.map(item => item.total);
+
+                        if (assuntosChart) {
+                            // Se o gráfico já existe, apenas atualiza os dados
+                            assuntosChart.data.labels = labels;
+                            assuntosChart.data.datasets[0].data = chartData;
+                            assuntosChart.update();
+                        } else {
+                            // Se não, cria um novo gráfico
+                            assuntosChart = new Chart(ctx, {
+                                type: 'pie', // Tipo do gráfico
+                                data: {
+                                    labels: labels,
+                                    datasets: [{
+                                        label: 'Atendimentos',
+                                        data: chartData,
+                                        backgroundColor: [
+                                            '#4A90E2', '#50E3C2', '#F5A623', '#BD10E0', '#9013FE'
+                                        ],
+                                        hoverOffset: 4
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: {
+                                            position: 'right',
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    } else {
+                        // Se não há dados, mostra uma mensagem
+                        canvasContainer.style.display = 'none';
+                        if (!canvasContainer.nextElementSibling) {
+                             const noDataEl = document.createElement('p');
+                             noDataEl.className = 'text-center text-muted';
+                             noDataEl.textContent = 'Nenhum atendimento categorizado hoje.';
+                             canvasContainer.parentElement.appendChild(noDataEl);
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao buscar dados do agente:', error);
+            });
+    }
+
+    const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+    socket.on('atualizar_dashboard', fetchData);
+
+    fetchData(); // Carga inicial
+});
+</script>
+{% endblock %}

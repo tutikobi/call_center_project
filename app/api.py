@@ -154,7 +154,6 @@ def processar_mensagem_recebida(message, empresa):
         'timestamp': timestamp.strftime('%H:%M')
     }, room=f"conversa_{conversa.id}")
     
-    # --- NOVO EVENTO: AVISA O DASHBOARD SOBRE UMA NOVA CONVERSA NA FILA ---
     socketio.emit('atualizar_dashboard')
 
 
@@ -227,13 +226,25 @@ def dados_produtividade():
         ).scalar() or 0
         agente_tma_min = int(agente_tma_query // 60)
         agente_tma_sec = int(agente_tma_query % 60)
+
+        # --- ALTERAÇÃO: CALCULAR OS ASSUNTOS MAIS ATENDIDOS ---
+        top_assuntos_query = db.session.query(
+            ConversaWhatsApp.assunto, func.count(ConversaWhatsApp.id).label('total')
+        ).filter(
+            ConversaWhatsApp.agente_atribuido_id == agente.id,
+            cast(ConversaWhatsApp.created_at, Date) == hoje
+        ).group_by(ConversaWhatsApp.assunto).order_by(func.count(ConversaWhatsApp.id).desc()).limit(5).all()
+
+        top_assuntos = [{"assunto": a.assunto, "total": a.total} for a in top_assuntos_query]
         
         agentes.append({
+            "id": agente.id, # Adicionado ID para o link
             "nome": agente.nome,
             "setor": agente.departamento.nome if agente.departamento else "Sem Setor",
             "atendimentos": atendimentos_hoje,
             "tma": f"{agente_tma_min:02d}:{agente_tma_sec:02d}",
-            "status": agente.status_agente
+            "status": agente.status_agente,
+            "top_assuntos": top_assuntos # Adicionado ao JSON
         })
     
     return jsonify({
@@ -244,7 +255,6 @@ def dados_produtividade():
         "agentes": agentes
     })
 
-# --- NOVAS ROTAS DE INTERAÇÃO DO AGENTE ---
 @bp.route('/agente/mudar_status', methods=['POST'])
 @login_required
 def mudar_status_agente():
@@ -256,7 +266,6 @@ def mudar_status_agente():
     agente.status_agente = novo_status
     db.session.commit()
     
-    # Emite um evento para o dashboard saber que precisa de se atualizar
     socketio.emit('atualizar_dashboard')
     
     return jsonify({'status': 'ok', 'message': f'Status alterado para {novo_status}.'})
@@ -269,14 +278,12 @@ def definir_assunto_conversa(conversa_id):
         return jsonify({'status': 'error', 'message': 'Assunto não fornecido.'}), 400
         
     conversa = ConversaWhatsApp.query.get_or_404(conversa_id)
-    # Verifica se o agente tem permissão para alterar esta conversa
     if conversa.empresa_id != current_user.empresa_id:
         return jsonify({'status': 'error', 'message': 'Acesso negado.'}), 403
         
     conversa.assunto = novo_assunto
     db.session.commit()
     
-    # Emite um evento para o dashboard saber que precisa de se atualizar
     socketio.emit('atualizar_dashboard')
     
     return jsonify({'status': 'ok', 'message': f'Assunto da conversa alterado para {novo_assunto}.'})

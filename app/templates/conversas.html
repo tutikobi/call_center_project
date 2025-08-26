@@ -10,6 +10,16 @@
                 <div class="card-header bg-light">
                     <h5 class="mb-0">Conversas Ativas ({{ conversas|length }})</h5>
                 </div>
+                
+                <div class="card-header d-flex justify-content-around align-items-center p-2 border-bottom">
+                    <span class="small text-muted me-2">Meu Status:</span>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-success status-btn" data-status="Disponível">Disponível</button>
+                        <button type="button" class="btn btn-outline-secondary status-btn" data-status="Pausa">Pausa</button>
+                        <button type="button" class="btn btn-outline-danger status-btn" data-status="Ocupado">Ocupado</button>
+                    </div>
+                </div>
+
                 <div class="card-body p-0 overflow-auto">
                     <div class="list-group list-group-flush" id="lista-de-conversas">
                         {% for conversa in conversas %}
@@ -54,6 +64,30 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatColuna = document.getElementById('chat-coluna');
     let currentConversationId = null;
 
+    // --- ALTERAÇÃO 2: LÓGICA PARA OS BOTÕES DE STATUS ---
+    const statusButtons = document.querySelectorAll('.status-btn');
+    statusButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const novoStatus = this.dataset.status;
+            
+            fetch("{{ url_for('api.mudar_status_agente') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: novoStatus })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'ok') {
+                    // Atualiza a UI para mostrar o botão ativo
+                    statusButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                } else {
+                    alert('Erro ao mudar de status.');
+                }
+            });
+        });
+    });
+
     listaConversas.addEventListener('click', function(e) {
         e.preventDefault();
         const link = e.target.closest('a');
@@ -67,10 +101,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (currentConversationId === conversaId) return;
         currentConversationId = conversaId;
 
-        // Avisa o servidor que estamos a ouvir esta conversa
         socket.emit('join_conversation', { conversa_id: conversaId });
 
-        // Busca o histórico da conversa
         fetch(`/api/conversa/${conversaId}`)
             .then(response => response.json())
             .then(data => {
@@ -79,6 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderChatWindow(conversaId, clienteNome, mensagens) {
+        // --- ALTERAÇÃO 3: ADICIONAR MENU PARA CATEGORIZAR CONVERSA ---
         chatColuna.innerHTML = `
             <div class="whatsapp-container">
                 <div class="whatsapp-header">
@@ -88,6 +121,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             <h6>${clienteNome}</h6>
                             <span class="status">online</span>
                         </div>
+                    </div>
+                    <div class="dropdown ms-auto">
+                        <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-tag me-1"></i> Categorizar
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item category-item" href="#" data-assunto="Dúvida Folha">Dúvida Folha</a></li>
+                            <li><a class="dropdown-item category-item" href="#" data-assunto="Rescisão">Rescisão</a></li>
+                            <li><a class="dropdown-item category-item" href="#" data-assunto="Adiantamento Salarial">Adiantamento Salarial</a></li>
+                            <li><a class="dropdown-item category-item" href="#" data-assunto="Benefícios">Benefícios</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item category-item" href="#" data-assunto="Geral">Geral</a></li>
+                        </ul>
                     </div>
                 </div>
                 <div class="whatsapp-messages" id="messages-container">
@@ -101,13 +147,33 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         scrollToBottom();
 
-        // Adiciona listeners para o envio de mensagens
         const enviarBtn = document.getElementById('enviar-btn');
         const mensagemInput = document.getElementById('mensagem-input');
 
         enviarBtn.addEventListener('click', () => sendMessage(conversaId));
         mensagemInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage(conversaId);
+        });
+
+        // --- ALTERAÇÃO 4: LÓGICA PARA O MENU DE CATEGORIAS ---
+        const categoryItems = document.querySelectorAll('.category-item');
+        categoryItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const novoAssunto = this.dataset.assunto;
+                
+                fetch(`/api/conversa/${conversaId}/definir_assunto`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ assunto: novoAssunto })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status !== 'ok') {
+                         alert('Erro ao categorizar conversa.');
+                    }
+                });
+            });
         });
     }
 
@@ -145,7 +211,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Ouve por novas mensagens do cliente em tempo real
     socket.on('nova_mensagem_cliente', function(data) {
         if (data.conversa_id == currentConversationId) {
             const messagesContainer = document.getElementById('messages-container');

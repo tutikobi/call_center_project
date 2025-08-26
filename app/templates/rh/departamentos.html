@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Gestão de Departamentos{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Departamentos</h1>
+    <a href="{{ url_for('rh.novo_departamento') }}" class="btn btn-success">
+        <i class="fas fa-plus me-2"></i>Novo Departamento
+    </a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Descrição</th>
+                        <th>Nº de Funcionários</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for depto in departamentos %}
+                    <tr>
+                        <td>{{ depto.nome }}</td>
+                        <td>{{ depto.descricao or 'N/D' }}</td>
+                        <td><span class="badge bg-secondary">{{ depto.funcionarios|length }}</span></td>
+                        <td class="text-end">
+                            <a href="{{ url_for('rh.editar_departamento', id=depto.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center">Nenhum departamento cadastrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -62,21 +62,42 @@ def nova_empresa():
         data_vencimento_str = form_data.get('data_vencimento_pagamento')
         data_vencimento = datetime.strptime(data_vencimento_str, '%Y-%m-%d') if data_vencimento_str else None
         
+        plano_selecionado = form_data.get('plano')
+
         nova_empresa = Empresa(
             nome_empresa=form_data.get('nome_empresa'),
             cnpj=form_data.get('cnpj'),
-            plano=form_data.get('plano'),
+            plano=plano_selecionado,
             telefone_contato=form_data.get('telefone_contato'),
             responsavel_contrato=form_data.get('responsavel_contrato'),
             forma_pagamento=form_data.get('forma_pagamento'),
             data_vencimento_pagamento=data_vencimento,
             monitorar_reputacao=True if form_data.get('monitorar_reputacao') == 'y' else False,
             google_reviews_url=form_data.get('google_reviews_url'),
-            # --- CORREÇÃO APLICADA AQUI ---
             reclame_a_qui_url=form_data.get('reclame_aqui_url'),
             google_place_id=form_data.get('google_place_id')
         )
         
+        # --- CORREÇÃO APLICADA AQUI: Adicionar lógica de permissões do plano ---
+        if plano_selecionado == 'basico':
+            nova_empresa.plano_rh = False
+            nova_empresa.plano_ia = False
+            nova_empresa.plano_api = False
+            nova_empresa.plano_relatorios_avancados = False
+            nova_empresa.plano_suporte_prioritario = False
+        elif plano_selecionado == 'medio':
+            nova_empresa.plano_rh = True
+            nova_empresa.plano_ia = False
+            nova_empresa.plano_api = False
+            nova_empresa.plano_relatorios_avancados = True
+            nova_empresa.plano_suporte_prioritario = False
+        elif plano_selecionado == 'completo' or plano_selecionado == 'pro':
+            nova_empresa.plano_rh = True
+            nova_empresa.plano_ia = True
+            nova_empresa.plano_api = True
+            nova_empresa.plano_relatorios_avancados = True
+            nova_empresa.plano_suporte_prioritario = True
+
         db.session.add(nova_empresa)
         db.session.commit()
         
@@ -113,7 +134,6 @@ def editar_empresa(id):
         empresa.data_vencimento_pagamento = datetime.strptime(data_vencimento_str, '%Y-%m-%d') if data_vencimento_str else None
         empresa.monitorar_reputacao = True if form.get('monitorar_reputacao') == 'y' else False
         empresa.google_reviews_url = form.get('google_reviews_url')
-        # --- CORREÇÃO APLICADA AQUI ---
         empresa.reclame_a_qui_url = form.get('reclame_aqui_url')
         empresa.google_place_id = form.get('google_place_id')
 
@@ -131,7 +151,7 @@ def editar_empresa(id):
             empresa.plano_api = False
             empresa.plano_relatorios_avancados = True
             empresa.plano_suporte_prioritario = False
-        elif novo_plano == 'completo' or novo_plano == 'pro': # Incluindo 'pro' como completo
+        elif novo_plano == 'completo' or novo_plano == 'pro':
             empresa.plano_rh = True
             empresa.plano_ia = True
             empresa.plano_api = True
@@ -143,6 +163,8 @@ def editar_empresa(id):
         return redirect(url_for('admin.index'))
         
     return render_template('admin/form_empresa.html', page_title=f"Editar Empresa: {empresa.nome_empresa}", empresa=empresa, is_edit=True)
+
+# ... (o resto do ficheiro continua igual) ...
 
 @bp.route('/empresas/<int:id>/toggle_status', methods=['POST'])
 @login_required
