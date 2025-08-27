@@ -28,6 +28,18 @@ class Funcionario(BaseModel):
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
     foto_perfil = db.Column(db.String(255), nullable=True)
     
+    jornada_trabalho = db.Column(db.String(20), default='5x2') 
+    
+    # --- CAMPOS DE VALOR (AGORA TODOS DIÁRIOS) ---
+    vale_transporte_diario = db.Column(db.Numeric(10, 2), default=0.0)
+    vale_alimentacao_diario = db.Column(db.Numeric(10, 2), default=0.0) # ATUALIZADO
+    vale_refeicao_diario = db.Column(db.Numeric(10, 2), default=0.0)    # ATUALIZADO
+    
+    # --- CAMPOS DE CONTROLE (BOOLEAN) ---
+    recebe_vt = db.Column(db.Boolean, default=False)
+    recebe_va = db.Column(db.Boolean, default=False)
+    recebe_vr = db.Column(db.Boolean, default=False)
+    
     cargo = db.relationship('Cargo', backref='funcionarios')
     pontos = db.relationship('ControlePonto', backref='funcionario', lazy='dynamic')
     avaliacoes = db.relationship('AvaliacaoDesempenho', backref='funcionario', lazy='dynamic', foreign_keys='AvaliacaoDesempenho.funcionario_id')
@@ -35,6 +47,7 @@ class Funcionario(BaseModel):
     departamento = db.relationship('Departamento', foreign_keys=[departamento_id], back_populates='funcionarios')
     documentos = db.relationship('DocumentoFuncionario', backref='funcionario', lazy=True, cascade="all, delete-orphan")
 
+# ... (o resto do arquivo permanece igual)
 class Cargo(BaseModel):
     __tablename__ = 'cargos'
     nome = db.Column(db.String(100), nullable=False)
@@ -42,8 +55,6 @@ class Cargo(BaseModel):
     salario_base = db.Column(db.Numeric(10, 2), nullable=False)
     nivel = db.Column(db.String(20), nullable=False)
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
-    
-    # --- NOVO CAMPO ADICIONADO ---
     cbo = db.Column(db.String(10), nullable=True)
 
 class Departamento(BaseModel):

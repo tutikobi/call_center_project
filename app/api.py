@@ -2,6 +2,10 @@
 
 from flask import Blueprint, request, jsonify, current_app
 from .models import db, Avaliacao, ConversaWhatsApp, MensagemWhatsApp, Empresa, Usuario
+# --- IMPORTAÇÕES ADICIONADAS ---
+from app.models_rh import Funcionario, Departamento
+from app.rh.calculos import calcular_folha_pagamento
+# --- FIM DAS IMPORTAÇÕES ADICIONADAS ---
 from flask_login import login_required, current_user
 from datetime import datetime, time
 from sqlalchemy import func, cast, Date
@@ -254,6 +258,55 @@ def dados_produtividade():
         "csatGeral": round(csat_geral, 1),
         "agentes": agentes
     })
+
+# --- NOVA ROTA PARA O DASHBOARD FINANCEIRO DE RH ---
+@bp.route('/rh/dados_dashboard_financeiro')
+@login_required
+def dados_dashboard_financeiro():
+    empresa_id = current_user.empresa_id
+    funcionarios_ativos = Funcionario.query.filter_by(empresa_id=empresa_id, status='ativo').all()
+
+    if not funcionarios_ativos:
+        return jsonify({
+            "total_funcionarios": 0,
+            "custo_total_empresa": 0,
+            "total_salarios_liquidos": 0,
+            "total_beneficios": 0,
+            "total_impostos": 0,
+            "distribuicao_custos": {'labels': [], 'data': []}
+        })
+
+    custo_total = 0
+    salarios_liquidos = 0
+    beneficios = 0
+    impostos = 0
+    
+    for func in funcionarios_ativos:
+        resultado = calcular_folha_pagamento(func)
+        if resultado['success']:
+            custo_total += resultado['totais']['custo_total_empresa']
+            salarios_liquidos += resultado['totais']['liquido_funcionario']
+            beneficios += resultado['proventos']['vale_alimentacao'] + resultado['proventos']['vale_refeicao']
+            impostos += resultado['custos_empresa']['fgts'] + resultado['custos_empresa']['inss_patronal']
+
+    distribuicao_custos = {
+        'labels': ['Salários Líquidos', 'Benefícios (VA/VR)', 'Impostos (FGTS/INSS Patronal)'],
+        'data': [
+            round(float(salarios_liquidos), 2),
+            round(float(beneficios), 2),
+            round(float(impostos), 2)
+        ]
+    }
+    
+    return jsonify({
+        "total_funcionarios": len(funcionarios_ativos),
+        "custo_total_empresa": round(float(custo_total), 2),
+        "total_salarios_liquidos": round(float(salarios_liquidos), 2),
+        "total_beneficios": round(float(beneficios), 2),
+        "total_impostos": round(float(impostos), 2),
+        "distribuicao_custos": distribuicao_custos
+    })
+
 
 @bp.route('/agente/mudar_status', methods=['POST'])
 @login_required

@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Financeiro RH{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Dashboard Financeiro RH</h1>
+    <a href="{{ url_for('rh.dashboard') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Voltar
+    </a>
+</div>
+<p class="text-muted">Visão consolidada dos custos com pessoal da sua empresa para o mês corrente.</p>
+
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon bg-primary"><i class="fas fa-users"></i></div>
+            <div class="metric-content">
+                <div class="metric-value" id="total-funcionarios">0</div>
+                <div class="metric-label">Funcionários Ativos</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon bg-danger"><i class="fas fa-wallet"></i></div>
+            <div class="metric-content">
+                <div class="metric-value" id="custo-total">R$ 0,00</div>
+                <div class="metric-label">Custo Total Empresa</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon bg-success"><i class="fas fa-hand-holding-usd"></i></div>
+            <div class="metric-content">
+                <div class="metric-value" id="salarios-liquidos">R$ 0,00</div>
+                <div class="metric-label">Total Salários Líquidos</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="metric-card">
+            <div class="metric-icon bg-info"><i class="fas fa-percentage"></i></div>
+            <div class="metric-content">
+                <div class="metric-value" id="total-impostos">R$ 0,00</div>
+                <div class="metric-label">Total Impostos (FGTS/INSS)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                Distribuição de Custos da Folha de Pagamento
+            </div>
+            <div class="card-body">
+                <div style="position: relative; height: 400px; width: 100%;">
+                    <canvas id="graficoCustos"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const formatCurrency = (value) => {
+        return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    };
+
+    let costChart = null; // Guardar a referência do gráfico
+
+    async function fetchData() {
+        try {
+            const response = await fetch("{{ url_for('api.dados_dashboard_financeiro') }}");
+            if (!response.ok) throw new Error('Falha na resposta da API');
+            
+            const data = await response.json();
+
+            // Atualiza os cards
+            document.getElementById('total-funcionarios').textContent = data.total_funcionarios;
+            document.getElementById('custo-total').textContent = formatCurrency(data.custo_total_empresa);
+            document.getElementById('salarios-liquidos').textContent = formatCurrency(data.total_salarios_liquidos);
+            document.getElementById('total-impostos').textContent = formatCurrency(data.total_impostos);
+
+            // Atualiza o gráfico
+            const ctx = document.getElementById('graficoCustos').getContext('2d');
+            const chartData = data.distribuicao_custos;
+
+            if (chartData.data.every(item => item === 0)) {
+                ctx.canvas.parentElement.innerHTML = '<p class="text-center text-muted mt-5">Não há dados suficientes para exibir o gráfico.</p>';
+                return;
+            }
+
+            if (costChart) {
+                costChart.data.labels = chartData.labels;
+                costChart.data.datasets[0].data = chartData.data;
+                costChart.update();
+            } else {
+                costChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: chartData.labels,
+                        datasets: [{
+                            label: 'Custo',
+                            data: chartData.data,
+                            backgroundColor: ['#28a745', '#0dcaf0', '#dc3545'],
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed !== null) {
+                                            label += formatCurrency(context.parsed);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+        } catch (error) {
+            console.error("Erro ao carregar dados do dashboard financeiro:", error);
+            document.getElementById('graficoCustos').parentElement.innerHTML = '<p class="text-center text-danger">Erro ao carregar os dados do gráfico.</p>';
+        }
+    }
+
+    fetchData(); // Carga inicial
+});
+</script>
+{% endblock %}

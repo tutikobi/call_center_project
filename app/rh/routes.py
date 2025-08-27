@@ -38,6 +38,13 @@ def dashboard():
         total_departamentos=total_departamentos,
         total_cargos=total_cargos)
 
+@rh.route('/dashboard_financeiro')
+@login_required
+@require_plan('medio')
+def dashboard_financeiro():
+    return render_template('rh/dashboard_financeiro.html')
+
+
 # --- ROTAS PARA FUNCIONÁRIOS ---
 
 @rh.route('/funcionarios')
@@ -47,6 +54,39 @@ def listar_funcionarios():
     empresa_id = current_user.empresa_id
     funcionarios = Funcionario.query.filter_by(empresa_id=empresa_id).order_by(Funcionario.nome).all()
     return render_template('rh/funcionarios.html', funcionarios=funcionarios)
+
+def _populate_funcionario_from_form(funcionario, form_data):
+    """Função auxiliar para popular dados do funcionário a partir do formulário."""
+    def to_float(value):
+        return float(value.replace('R$', '').replace('.', '').replace(',', '.').strip() or 0)
+
+    funcionario.nome = form_data.get('nome')
+    funcionario.cpf = form_data.get('cpf')
+    funcionario.rg = form_data.get('rg')
+    funcionario.data_nascimento = datetime.strptime(form_data.get('data_nascimento'), '%Y-%m-%d').date()
+    funcionario.sexo = form_data.get('sexo')
+    funcionario.estado_civil = form_data.get('estado_civil')
+    funcionario.telefone = form_data.get('telefone')
+    funcionario.email = form_data.get('email')
+    funcionario.endereco = form_data.get('endereco')
+    funcionario.cep = form_data.get('cep')
+    funcionario.cidade = form_data.get('cidade')
+    funcionario.estado = form_data.get('estado')
+    funcionario.cargo_id = form_data.get('cargo_id')
+    funcionario.departamento_id = form_data.get('departamento_id')
+    funcionario.salario = to_float(form_data.get('salario'))
+    funcionario.data_admissao = datetime.strptime(form_data.get('data_admissao'), '%Y-%m-%d').date()
+    funcionario.jornada_trabalho = form_data.get('jornada_trabalho')
+    
+    # Lógica de benefícios ATUALIZADA
+    funcionario.recebe_vt = 'recebe_vt' in form_data
+    funcionario.vale_transporte_diario = to_float(form_data.get('vale_transporte_diario'))
+    
+    funcionario.recebe_va = 'recebe_va' in form_data
+    funcionario.vale_alimentacao_diario = to_float(form_data.get('vale_alimentacao_diario'))
+
+    funcionario.recebe_vr = 'recebe_vr' in form_data
+    funcionario.vale_refeicao_diario = to_float(form_data.get('vale_refeicao_diario'))
 
 @rh.route('/funcionarios/novo', methods=['GET', 'POST'])
 @login_required
@@ -61,30 +101,12 @@ def novo_funcionario():
             return render_template('rh/funcionario_form.html', cargos=cargos, departamentos=departamentos, form_data=request.form)
 
         try:
-            ultimo = Funcionario.query.order_by(Funcionario.id.desc()).first()
-            matricula = f"FUNC{str(ultimo.id + 1 if ultimo else 1).zfill(4)}"
-            salario_str = request.form['salario'].replace('R$', '').replace('.', '').replace(',', '.').strip()
+            novo_func = Funcionario(empresa_id=current_user.empresa_id)
+            _populate_funcionario_from_form(novo_func, request.form)
 
-            novo_func = Funcionario(
-                nome=request.form['nome'],
-                cpf=cpf,
-                rg=request.form['rg'],
-                data_nascimento=datetime.strptime(request.form['data_nascimento'], '%Y-%m-%d').date(),
-                sexo=request.form['sexo'],
-                estado_civil=request.form['estado_civil'],
-                telefone=request.form['telefone'],
-                email=request.form['email'],
-                endereco=request.form['endereco'],
-                cep=request.form['cep'],
-                cidade=request.form['cidade'],
-                estado=request.form['estado'],
-                matricula=matricula,
-                cargo_id=request.form['cargo_id'],
-                departamento_id=request.form['departamento_id'],
-                salario=float(salario_str),
-                data_admissao=datetime.strptime(request.form['data_admissao'], '%Y-%m-%d').date(),
-                empresa_id=current_user.empresa_id
-            )
+            ultimo = Funcionario.query.order_by(Funcionario.id.desc()).first()
+            novo_func.matricula = f"FUNC{str(ultimo.id + 1 if ultimo else 1).zfill(4)}"
+            
             db.session.add(novo_func)
             db.session.commit()
             flash('Funcionário cadastrado com sucesso!', 'success')
@@ -95,8 +117,31 @@ def novo_funcionario():
 
     cargos = Cargo.query.filter_by(empresa_id=current_user.empresa_id).all()
     departamentos = Departamento.query.filter_by(empresa_id=current_user.empresa_id).all()
-    
     return render_template('rh/funcionario_form.html', cargos=cargos, departamentos=departamentos)
+
+@rh.route('/funcionarios/<int:id>/editar', methods=['GET', 'POST'])
+@login_required
+@require_plan('medio')
+def editar_funcionario(id):
+    funcionario = Funcionario.query.get_or_404(id)
+    if funcionario.empresa_id != current_user.empresa_id:
+        flash('Acesso negado.', 'danger')
+        return redirect(url_for('rh.listar_funcionarios'))
+
+    if request.method == 'POST':
+        try:
+            _populate_funcionario_from_form(funcionario, request.form)
+            db.session.commit()
+            flash('Funcionário atualizado com sucesso!', 'success')
+            return redirect(url_for('rh.ver_funcionario', id=id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao atualizar funcionário: {str(e)}', 'danger')
+    
+    cargos = Cargo.query.filter_by(empresa_id=current_user.empresa_id).order_by(Cargo.nome).all()
+    departamentos = Departamento.query.filter_by(empresa_id=current_user.empresa_id).order_by(Departamento.nome).all()
+    return render_template('rh/funcionario_form.html', funcionario=funcionario, cargos=cargos, departamentos=departamentos)
+
 
 @rh.route('/funcionarios/<int:id>')
 @login_required
@@ -211,19 +256,20 @@ def simular_folha_pagamento(id):
         return redirect(url_for('rh.listar_funcionarios'))
 
     resultado = None
+    mes, ano = datetime.today().month, datetime.today().year
+
     if request.method == 'POST':
-        dias_uteis = int(request.form.get('dias_uteis', 22))
-        valor_diario_vt = float(request.form.get('valor_diario_vt', 0).replace(',', '.'))
-        valor_mensal_va = float(request.form.get('valor_mensal_va', 0).replace(',', '.'))
+        mes = int(request.form.get('mes', mes))
+        ano = int(request.form.get('ano', ano))
 
-        resultado = calcular_folha_pagamento(
-            salario_bruto=funcionario.salario,
-            dias_uteis=dias_uteis,
-            valor_diario_vt=valor_diario_vt,
-            valor_mensal_va=valor_mensal_va
-        )
+    resultado = calcular_folha_pagamento(funcionario, ano=ano, mes=mes)
 
-    return render_template('rh/folha_pagamento_form.html', funcionario=funcionario, resultado=resultado)
+    return render_template('rh/folha_pagamento_form.html', 
+        funcionario=funcionario, 
+        resultado=resultado,
+        mes_selecionado=mes,
+        ano_selecionado=ano)
+
 
 @rh.route('/funcionarios/importar', methods=['POST'])
 @login_required
@@ -267,8 +313,8 @@ def importar_funcionarios():
                 continue
             
             try:
-                data_nasc = datetime.strptime(data['data_nascimento'], '%d/%m/%Y').date()
-                data_adm = datetime.strptime(data['data_admissao'], '%d/%m/%Y').date()
+                data_nasc = datetime.strptime(str(data['data_nascimento']), '%Y-%m-%d %H:%M:%S').date()
+                data_adm = datetime.strptime(str(data['data_admissao']), '%Y-%m-%d %H:%M:%S').date()
             except (ValueError, TypeError):
                 erros += 1
                 continue
@@ -323,7 +369,7 @@ def download_template():
     sheet.append(headers)
 
     example = [
-        "João da Silva", "123.456.789-00", "joao.silva@exemplo.com", "15/05/1990", "01/08/2025",
+        "João da Silva", "123.456.789-00", "joao.silva@exemplo.com", "1990-05-15 00:00:00", "2025-08-01 00:00:00",
         "3500.50", "Analista Financeiro", "Financeiro", "1234567", "M", "Casado(a)",
         "(51) 99999-8888", "Rua das Flores, 123", "90000-000", "Porto Alegre", "RS"
     ]

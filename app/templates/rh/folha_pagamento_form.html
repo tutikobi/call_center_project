@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Simulação de Folha de Pagamento{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Simulação de Folha de Pagamento</h1>
+    <a href="{{ url_for('rh.ver_funcionario', id=funcionario.id) }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Voltar ao Perfil
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">Dados do Funcionário</div>
+            <div class="card-body">
+                <p><strong>Nome:</strong> {{ funcionario.nome }}</p>
+                <p><strong>Salário Bruto:</strong> {{ funcionario.salario|brl }}</p>
+                <p><strong>Jornada:</strong> {{ funcionario.jornada_trabalho }}</p>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">Período do Cálculo</div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="mes" class="form-label">Mês</label>
+                        <select class="form-select" id="mes" name="mes">
+                            {% for i in range(1, 13) %}
+                                <option value="{{ i }}" {% if i == mes_selecionado %}selected{% endif %}>{{ i }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                         <label for="ano" class="form-label">Ano</label>
+                        <input type="number" class="form-control" id="ano" name="ano" value="{{ ano_selecionado }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-sync-alt me-2"></i>Recalcular
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">Resultado da Simulação ({{ mes_selecionado }}/{{ ano_selecionado }})</div>
+            <div class="card-body">
+                {% if resultado and resultado.success %}
+                    <p class="text-muted">Cálculo baseado em <strong>{{ resultado.dias_uteis_mes }} dias úteis</strong> para a jornada {{ funcionario.jornada_trabalho }}.</p>
+                    <hr>
+                    <h5 class="mb-3">Proventos (Rendimentos)</h5>
+                    <table class="table">
+                        <tbody>
+                            <tr>
+                                <td>Salário Base</td>
+                                <td class="text-end">{{ resultado.proventos.salario_base|brl }}</td>
+                            </tr>
+                            <tr>
+                                <td>Vale Alimentação</td>
+                                <td class="text-end">{{ resultado.proventos.vale_alimentacao|brl }}</td>
+                            </tr>
+                            <tr>
+                                <td>Vale Refeição</td>
+                                <td class="text-end">{{ resultado.proventos.vale_refeicao|brl }}</td>
+                            </tr>
+                            <tr class="table-light">
+                                <th>Total de Proventos</th>
+                                <th class="text-end">{{ resultado.totais.proventos|brl }}</th>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h5 class="mb-3 mt-4">Descontos</h5>
+                     <table class="table">
+                        <tbody>
+                            <tr>
+                                <td>INSS</td>
+                                <td class="text-end text-danger">- {{ resultado.descontos.inss|brl }}</td>
+                            </tr>
+                             <tr>
+                                <td>IRRF</td>
+                                <td class="text-end text-danger">- {{ resultado.descontos.irrf|brl }}</td>
+                            </tr>
+                             <tr>
+                                <td>Vale Transporte (Desconto 6%)</td>
+                                <td class="text-end text-danger">- {{ resultado.descontos.vale_transporte|brl }}</td>
+                            </tr>
+                             <tr class="table-light">
+                                <th>Total de Descontos</th>
+                                <th class="text-end">{{ resultado.totais.descontos|brl }}</th>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                     <div class="alert alert-success text-center">
+                        <h4 class="alert-heading">Salário Líquido a Receber</h4>
+                        <p class="display-6 mb-0">{{ resultado.totais.liquido_funcionario|brl }}</p>
+                    </div>
+
+                    <h5 class="mb-3 mt-4">Custos para a Empresa</h5>
+                     <table class="table">
+                        <tbody>
+                            <tr>
+                                <td>FGTS (Depósito)</td>
+                                <td class="text-end">{{ resultado.custos_empresa.fgts|brl }}</td>
+                            </tr>
+                            <tr>
+                                <td>INSS Patronal (Estimado)</td>
+                                <td class="text-end">{{ resultado.custos_empresa.inss_patronal|brl }}</td>
+                            </tr>
+                            <tr class="table-light">
+                                <th>Custo Total do Funcionário no Mês</th>
+                                <th class="text-end">{{ resultado.totais.custo_total_empresa|brl }}</th>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                {% elif resultado and not resultado.success %}
+                    <div class="alert alert-danger">
+                        <strong>Erro ao calcular:</strong> {{ resultado.error }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
