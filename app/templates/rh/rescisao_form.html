@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Cálculo de Rescisão{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Cálculo de Rescisão de Contrato</h1>
+    <a href="{{ url_for('rh.ver_funcionario', id=funcionario.id) }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Voltar ao Perfil
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">Dados do Funcionário</div>
+            <div class="card-body">
+                <p><strong>Nome:</strong> {{ funcionario.nome }}</p>
+                <p><strong>Salário Bruto:</strong> {{ funcionario.salario|brl }}</p>
+                <p><strong>Data de Admissão:</strong> {{ funcionario.data_admissao.strftime('%d/%m/%Y') }}</p>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">Parâmetros do Cálculo</div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="data_demissao" class="form-label">Data da Demissão</label>
+                        <input type="date" class="form-control" id="data_demissao" name="data_demissao" value="{{ request.form.data_demissao }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="motivo" class="form-label">Motivo da Rescisão</label>
+                        <select class="form-select" id="motivo" name="motivo" required>
+                            <option value="demissao_sem_justa_causa" {% if request.form.motivo == 'demissao_sem_justa_causa' %}selected{% endif %}>Demissão sem Justa Causa</option>
+                            <option value="pedido_demissao" {% if request.form.motivo == 'pedido_demissao' %}selected{% endif %}>Pedido de Demissão</option>
+                            <option value="demissao_com_justa_causa" {% if request.form.motivo == 'demissao_com_justa_causa' %}selected{% endif %}>Demissão com Justa Causa</option>
+                        </select>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="aviso_indenizado" name="aviso_indenizado" {% if 'aviso_indenizado' in request.form %}checked{% endif %}>
+                        <label class="form-check-label" for="aviso_indenizado">Aviso Prévio Indenizado?</label>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="ferias_vencidas" name="ferias_vencidas" {% if 'ferias_vencidas' in request.form %}checked{% endif %}>
+                        <label class="form-check-label" for="ferias_vencidas">Possui Férias Vencidas?</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-calculator me-2"></i>Calcular
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">Resultado da Simulação</div>
+            <div class="card-body">
+                {% if resultado %}
+                    {% if resultado.success %}
+                    <h5 class="mb-3">Verbas Rescisórias</h5>
+                    <table class="table">
+                        <tbody>
+                            <tr>
+                                <td>Saldo de Salário ({{ request.form.data_demissao.split('-')[2] }} dias)</td>
+                                <td class="text-end">{{ resultado.verbas.saldo_salario|brl }}</td>
+                            </tr>
+                            <tr>
+                                <td>Aviso Prévio Indenizado</td>
+                                <td class="text-end">{{ resultado.verbas.aviso_previo|brl }}</td>
+                            </tr>
+                            <tr>
+                                <td>13º Salário Proporcional</td>
+                                <td class="text-end">{{ resultado.verbas.decimo_terceiro_proporcional|brl }}</td>
+                            </tr>
+                             <tr>
+                                <td>Férias Vencidas</td>
+                                <td class="text-end">{{ resultado.verbas.ferias_vencidas|brl }}</td>
+                            </tr>
+                            <tr>
+                                <td>1/3 sobre Férias Vencidas</td>
+                                <td class="text-end">{{ resultado.verbas.um_terco_ferias_vencidas|brl }}</td>
+                            </tr>
+                            <tr>
+                                <td>Férias Proporcionais</td>
+                                <td class="text-end">{{ resultado.verbas.ferias_proporcionais|brl }}</td>
+                            </tr>
+                             <tr>
+                                <td>1/3 sobre Férias Proporcionais</td>
+                                <td class="text-end">{{ resultado.verbas.um_terco_ferias|brl }}</td>
+                            </tr>
+                            <tr class="table-light">
+                                <th>Total Bruto</th>
+                                <th class="text-end">{{ resultado.totais.bruto|brl }}</th>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h5 class="mb-3 mt-4">Descontos</h5>
+                     <table class="table">
+                        <tbody>
+                            <tr>
+                                <td>INSS</td>
+                                <td class="text-end text-danger">- {{ resultado.descontos.inss|brl }}</td>
+                            </tr>
+                             <tr>
+                                <td>IRRF</td>
+                                <td class="text-end text-danger">- {{ resultado.descontos.irrf|brl }}</td>
+                            </tr>
+                             <tr class="table-light">
+                                <th>Total de Descontos</th>
+                                <th class="text-end">{{ resultado.totais.descontos|brl }}</th>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                     <div class="alert alert-success text-center">
+                        <h4 class="alert-heading">Valor Líquido a Receber</h4>
+                        <p class="display-6 mb-0">{{ resultado.totais.liquido|brl }}</p>
+                    </div>
+                     <div class="alert alert-info text-center">
+                        <h4 class="alert-heading">Multa de 40% do FGTS</h4>
+                        <p class="display-6 mb-0">{{ resultado.multa_fgts|brl }}</p>
+                        <small>(Valor a ser pago pela empresa via GRRF)</small>
+                    </div>
+                    {% else %}
+                        <div class="alert alert-danger">
+                            <strong>Erro ao calcular:</strong> {{ resultado.error }}
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted text-center p-5">Preencha os parâmetros e clique em "Calcular" para ver o resultado da simulação.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

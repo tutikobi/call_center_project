@@ -7,6 +7,7 @@ from .config import Config
 import click
 from flask_migrate import Migrate
 from flask_socketio import SocketIO
+from decimal import Decimal # Importar Decimal
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -23,12 +24,28 @@ def create_app():
     login_manager.init_app(app)
     socketio.init_app(app)
 
+    # --- ALTERAÇÃO APLICADA AQUI: CRIAR E REGISTAR O FILTRO DE MOEDA ---
+    def format_brl(value):
+        """Filtro para formatar valores como moeda brasileira (R$)."""
+        if value is None:
+            return "R$ 0,00"
+        try:
+            # Converte para Decimal para garantir precisão
+            val = Decimal(value)
+            # Formata com 2 casas decimais, ponto como separador de milhar e vírgula para decimal
+            return f"R$ {val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        except (ValueError, TypeError):
+            return value
+
+    app.jinja_env.filters['brl'] = format_brl
+    # --- FIM DA ALTERAÇÃO ---
+
     login_manager.login_view = 'auth.login'
     login_manager.login_message = "Por favor, faça login para acessar esta página."
     login_manager.login_message_category = "info"
 
     with app.app_context():
-        from . import models, models_rh # Importa os modelos de RH
+        from . import models, models_rh
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -40,7 +57,6 @@ def create_app():
         # ... (código do comando init-db) ...
         pass
 
-    # --- CORREÇÃO APLICADA AQUI ---
     from . import routes, auth, api, admin, management, socket_events as events
     from .rh import routes as rh_routes
 

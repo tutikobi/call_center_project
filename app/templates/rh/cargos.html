@@ -1,47 +1,112 @@
 {% extends "base.html" %}
 
-{% block title %}Gestão de Cargos{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h2">Cargos</h1>
-    <a href="{{ url_for('rh.novo_cargo') }}" class="btn btn-success">
-        <i class="fas fa-plus me-2"></i>Novo Cargo
-    </a>
-</div>
+<h1 class="h2 mb-4">{{ title }}</h1>
 
-<div class="card shadow-sm">
+<div class="card">
     <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>Nível</th>
-                        <th>Salário Base</th>
-                        <th class="text-end">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for cargo in cargos %}
-                    <tr>
-                        <td>{{ cargo.nome }}</td>
-                        <td>{{ cargo.nivel|capitalize }}</td>
-                        <td>R$ {{ "%.2f"|format(cargo.salario_base) }}</td>
-                        <td class="text-end">
-                            <a href="{{ url_for('rh.editar_cargo', id=cargo.id) }}" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="4" class="text-center">Nenhum cargo cadastrado.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        <form method="POST">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="cbo" class="form-label">CBO</label>
+                    <input type="text" class="form-control" id="cbo" name="cbo" value="{{ cargo.cbo if cargo else '' }}" placeholder="Ex: 3172-10">
+                    <div id="cbo-feedback" class="form-text"></div>
+                </div>
+                <div class="col-md-8 mb-3">
+                    <label for="nome" class="form-label">Nome do Cargo</label>
+                    <input type="text" class="form-control" id="nome" name="nome" value="{{ cargo.nome if cargo else '' }}" required>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="nivel" class="form-label">Nível</label>
+                    <select class="form-select" id="nivel" name="nivel" required>
+                        <option value="júnior" {% if cargo and cargo.nivel == 'júnior' %}selected{% endif %}>Júnior</option>
+                        <option value="pleno" {% if cargo and cargo.nivel == 'pleno' %}selected{% endif %}>Pleno</option>
+                        <option value="sênior" {% if cargo and cargo.nivel == 'sênior' %}selected{% endif %}>Sênior</option>
+                        <option value="especialista" {% if cargo and cargo.nivel == 'especialista' %}selected{% endif %}>Especialista</option>
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="salario_base" class="form-label">Salário Base (R$)</label>
+                    <input type="text" class="form-control" id="salario" name="salario_base" value="{{ cargo.salario_base if cargo else '' }}" required>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="descricao" class="form-label">Descrição (Opcional)</label>
+                <textarea class="form-control" id="descricao" name="descricao" rows="3">{{ cargo.descricao if cargo else '' }}</textarea>
+            </div>
+            <div class="d-flex justify-content-end mt-4">
+                <a href="{{ url_for('rh.listar_cargos') }}" class="btn btn-secondary me-2">Cancelar</a>
+                <button type="submit" class="btn btn-success">Salvar</button>
+            </div>
+        </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/imask"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Máscara para o Salário
+    IMask(document.getElementById('salario'), {
+        mask: 'R$ num',
+        blocks: {
+            num: {
+                mask: Number,
+                scale: 2,
+                thousandsSeparator: '.',
+                padFractionalZeros: true,
+                radix: ',',
+                mapToRadix: ['.']
+            }
+        }
+    });
+
+    // --- LÓGICA CORRIGIDA PARA BUSCAR CARGO PELO CBO ---
+    const cboInput = document.getElementById('cbo');
+    const nomeCargoInput = document.getElementById('nome');
+    const feedbackEl = document.getElementById('cbo-feedback');
+    let typingTimer;
+
+    // Adiciona máscara ao campo CBO para guiar o utilizador
+    IMask(cboInput, {
+        mask: '0000-00'
+    });
+
+    cboInput.addEventListener('keyup', () => {
+        clearTimeout(typingTimer);
+        feedbackEl.innerHTML = '';
+        typingTimer = setTimeout(fetchCBO, 800); // Espera 0.8 segundos
+    });
+
+    async function fetchCBO() {
+        const cboCode = cboInput.value;
+        
+        // A busca só acontece se o CBO estiver no formato completo
+        if (cboCode.length === 7) {
+            feedbackEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Buscando...';
+            try {
+                // Usamos a BrasilAPI, que é pública e gratuita
+                const response = await fetch(`https://brasilapi.com.br/api/cbo/v1/${cboCode}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const ocupacoes = data.map(item => item.ocupacao).join(' / ');
+                    nomeCargoInput.value = ocupacoes;
+                    feedbackEl.innerHTML = '<span class="text-success">Cargo encontrado!</span>';
+                } else {
+                    feedbackEl.innerHTML = '<span class="text-danger">CBO não encontrado.</span>';
+                }
+            } catch (error) {
+                console.error('Erro ao buscar CBO:', error);
+                feedbackEl.innerHTML = '<span class="text-danger">Erro de rede ao buscar.</span>';
+            }
+        }
+    }
+});
+</script>
 {% endblock %}

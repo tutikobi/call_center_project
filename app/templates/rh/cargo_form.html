@@ -9,10 +9,17 @@
     <div class="card-body">
         <form method="POST">
             <div class="row">
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
+                    <label for="cbo" class="form-label">CBO</label>
+                    <input type="text" class="form-control" id="cbo" name="cbo" value="{{ cargo.cbo if cargo else '' }}" placeholder="Ex: 4110-10">
+                    <div id="cbo-feedback" class="form-text"></div>
+                </div>
+                <div class="col-md-8 mb-3">
                     <label for="nome" class="form-label">Nome do Cargo</label>
                     <input type="text" class="form-control" id="nome" name="nome" value="{{ cargo.nome if cargo else '' }}" required>
                 </div>
+            </div>
+            <div class="row">
                 <div class="col-md-6 mb-3">
                     <label for="nivel" class="form-label">Nível</label>
                     <select class="form-select" id="nivel" name="nivel" required>
@@ -22,10 +29,10 @@
                         <option value="especialista" {% if cargo and cargo.nivel == 'especialista' %}selected{% endif %}>Especialista</option>
                     </select>
                 </div>
-            </div>
-            <div class="mb-3">
-                <label for="salario_base" class="form-label">Salário Base (R$)</label>
-                <input type="number" step="0.01" class="form-control" id="salario_base" name="salario_base" value="{{ cargo.salario_base if cargo else '' }}" required>
+                <div class="col-md-6 mb-3">
+                    <label for="salario_base" class="form-label">Salário Base (R$)</label>
+                    <input type="text" class="form-control" id="salario" name="salario_base" value="{{ cargo.salario_base if cargo else '' }}" required>
+                </div>
             </div>
             <div class="mb-3">
                 <label for="descricao" class="form-label">Descrição (Opcional)</label>
@@ -38,4 +45,44 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/imask"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- VERSÃO FINAL E OFFLINE DA LÓGICA DO CBO ---
+
+    // 1. Os dados do CBO são passados diretamente do Python para o JavaScript
+    const cboData = JSON.parse('{{ cbo_data|tojson|safe }}');
+
+    const cboInput = document.getElementById('cbo');
+    const nomeCargoInput = document.getElementById('nome');
+    const feedbackEl = document.getElementById('cbo-feedback');
+    
+    IMask(cboInput, { mask: '0000-00' });
+
+    // 2. A busca é feita instantaneamente na variável 'cboData'
+    cboInput.addEventListener('keyup', () => {
+        const cboCode = cboInput.value;
+        
+        if (cboCode.length === 7) {
+            if (cboData && cboData[cboCode]) {
+                nomeCargoInput.value = cboData[cboCode];
+                feedbackEl.innerHTML = '<span class="text-success">Cargo encontrado!</span>';
+            } else {
+                feedbackEl.innerHTML = '<span class="text-danger">CBO não encontrado na lista.</span>';
+            }
+        } else {
+            feedbackEl.innerHTML = '';
+        }
+    });
+
+    // Máscara do Salário
+    IMask(document.getElementById('salario'), {
+        mask: 'R$ num',
+        blocks: { num: { mask: Number, scale: 2, thousandsSeparator: '.', padFractionalZeros: true, radix: ',', mapToRadix: ['.'] } }
+    });
+});
+</script>
 {% endblock %}

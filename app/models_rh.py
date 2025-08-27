@@ -1,29 +1,23 @@
 # call_center_project/app/models_rh.py
 
-from datetime import date
+from datetime import date, datetime
 from app import db
 from app.models import BaseModel
 
 class Funcionario(BaseModel):
     __tablename__ = 'funcionarios'
-    
-    # Dados Pessoais
     nome = db.Column(db.String(100), nullable=False)
     cpf = db.Column(db.String(14), unique=True, nullable=False)
     rg = db.Column(db.String(20), nullable=False)
     data_nascimento = db.Column(db.Date, nullable=False)
     sexo = db.Column(db.String(1), nullable=False)
     estado_civil = db.Column(db.String(20), nullable=False)
-    
-    # Contato
     telefone = db.Column(db.String(20), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     endereco = db.Column(db.Text, nullable=False)
     cep = db.Column(db.String(9), nullable=False)
     cidade = db.Column(db.String(100), nullable=False)
     estado = db.Column(db.String(2), nullable=False)
-    
-    # Dados Profissionais
     matricula = db.Column(db.String(20), unique=True, nullable=False)
     cargo_id = db.Column(db.Integer, db.ForeignKey('cargos.id'), nullable=False)
     departamento_id = db.Column(db.Integer, db.ForeignKey('departamentos.id'), nullable=False)
@@ -31,15 +25,15 @@ class Funcionario(BaseModel):
     data_admissao = db.Column(db.Date, nullable=False)
     data_demissao = db.Column(db.Date, nullable=True)
     status = db.Column(db.String(20), default='ativo')
-    
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
+    foto_perfil = db.Column(db.String(255), nullable=True)
     
     cargo = db.relationship('Cargo', backref='funcionarios')
     pontos = db.relationship('ControlePonto', backref='funcionario', lazy='dynamic')
     avaliacoes = db.relationship('AvaliacaoDesempenho', backref='funcionario', lazy='dynamic', foreign_keys='AvaliacaoDesempenho.funcionario_id')
     folhas = db.relationship('FolhaPagamento', backref='funcionario', lazy='dynamic')
     departamento = db.relationship('Departamento', foreign_keys=[departamento_id], back_populates='funcionarios')
-
+    documentos = db.relationship('DocumentoFuncionario', backref='funcionario', lazy=True, cascade="all, delete-orphan")
 
 class Cargo(BaseModel):
     __tablename__ = 'cargos'
@@ -48,7 +42,9 @@ class Cargo(BaseModel):
     salario_base = db.Column(db.Numeric(10, 2), nullable=False)
     nivel = db.Column(db.String(20), nullable=False)
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
-
+    
+    # --- NOVO CAMPO ADICIONADO ---
+    cbo = db.Column(db.String(10), nullable=True)
 
 class Departamento(BaseModel):
     __tablename__ = 'departamentos'
@@ -56,13 +52,17 @@ class Departamento(BaseModel):
     descricao = db.Column(db.Text)
     gestor_id = db.Column(db.Integer, db.ForeignKey('funcionarios.id'), nullable=True)
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
-    
     funcionarios = db.relationship('Funcionario', foreign_keys='Funcionario.departamento_id', back_populates='departamento')
-    
-    # --- CORREÇÃO APLICADA AQUI ---
-    # O 'post_update=True' resolve a dependência circular para o Alembic
     gestor = db.relationship('Funcionario', foreign_keys=[gestor_id], post_update=True)
 
+class DocumentoFuncionario(BaseModel):
+    __tablename__ = 'documentos_funcionarios'
+    id = db.Column(db.Integer, primary_key=True)
+    nome_arquivo = db.Column(db.String(200), nullable=False)
+    tipo_documento = db.Column(db.String(50), nullable=False)
+    caminho_arquivo = db.Column(db.String(255), nullable=False)
+    data_upload = db.Column(db.DateTime, default=datetime.utcnow)
+    funcionario_id = db.Column(db.Integer, db.ForeignKey('funcionarios.id'), nullable=False)
 
 class ControlePonto(BaseModel):
     __tablename__ = 'controle_ponto'
@@ -104,3 +104,15 @@ class FolhaPagamento(BaseModel):
     vale_transporte = db.Column(db.Numeric(10, 2), default=0)
     vale_refeicao = db.Column(db.Numeric(10, 2), default=0)
     total_proventos = db.Column(db.Numeric(10, 2), default=0)
+    total_descontos = db.Column(db.Numeric(10, 2), default=0)
+    salario_liquido = db.Column(db.Numeric(10, 2), default=0)
+    dias_trabalhados = db.Column(db.Integer, default=0)
+
+class BeneficioFuncionario(BaseModel):
+    __tablename__ = 'beneficios_funcionarios'
+    funcionario_id = db.Column(db.Integer, db.ForeignKey('funcionarios.id'), nullable=False)
+    tipo_beneficio = db.Column(db.String(50), nullable=False)
+    valor = db.Column(db.Numeric(10, 2), nullable=False)
+    ativo = db.Column(db.Boolean, default=True)
+    data_inicio = db.Column(db.Date, nullable=False)
+    data_fim = db.Column(db.Date, nullable=True)

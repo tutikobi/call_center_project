@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes de: {{ funcionario.nome }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Perfil do Funcionário</h1>
+    <a href="{{ url_for('rh.listar_funcionarios') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Voltar para a Lista
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                {% if funcionario.foto_perfil %}
+                    <img src="{{ url_for('rh.uploaded_file', empresa_id=funcionario.empresa_id, funcionario_id=funcionario.id, filename=funcionario.foto_perfil) }}" alt="Foto de Perfil" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                {% else %}
+                    <div class="bg-secondary rounded-circle mb-3 d-flex align-items-center justify-content-center" style="width: 150px; height: 150px;">
+                        <span class="text-white h1">?</span>
+                    </div>
+                {% endif %}
+
+                <h5 class="card-title mb-0">{{ funcionario.nome }}</h5>
+                <p class="text-muted">{{ funcionario.cargo.nome }}</p>
+
+                <hr>
+                
+                <form action="{{ url_for('rh.upload_documento', id=funcionario.id) }}" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="upload_type" value="foto">
+                    <label for="foto" class="form-label">Alterar foto de perfil</label>
+                    <div class="input-group">
+                        <input type="file" class="form-control" id="foto" name="file" accept="image/*">
+                        <button class="btn btn-outline-primary" type="submit">Enviar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Ações</h5>
+                <a href="{{ url_for('rh.calcular_rescisao_funcionario', id=funcionario.id) }}" class="btn btn-danger w-100">
+                    <i class="fas fa-calculator me-2"></i>Simular Rescisão
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="myTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="dados-tab" data-bs-toggle="tab" data-bs-target="#dados" type="button" role="tab">Dados Pessoais</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="docs-tab" data-bs-toggle="tab" data-bs-target="#docs" type="button" role="tab">Documentos</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="atestados-tab" data-bs-toggle="tab" data-bs-target="#atestados" type="button" role="tab">Atestados</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="myTabContent">
+                    <div class="tab-pane fade show active" id="dados" role="tabpanel">
+                        <p><strong>Email:</strong> {{ funcionario.email }}</p>
+                        <p><strong>Telefone:</strong> {{ funcionario.telefone }}</p>
+                        <p><strong>CPF:</strong> {{ funcionario.cpf }}</p>
+                        <p><strong>Departamento:</strong> {{ funcionario.departamento.nome }}</p>
+                        <p><strong>Data de Admissão:</strong> {{ funcionario.data_admissao.strftime('%d/%m/%Y') }}</p>
+                    </div>
+                    <div class="tab-pane fade" id="docs" role="tabpanel">
+                        <form action="{{ url_for('rh.upload_documento', id=funcionario.id) }}" method="POST" enctype="multipart/form-data" class="mb-4 p-3 border rounded">
+                            <input type="hidden" name="upload_type" value="documento">
+                            <div class="row">
+                                <div class="col-md-5">
+                                    <label class="form-label">Tipo de Documento</label>
+                                    <input type="text" name="tipo_documento" class="form-control" placeholder="Ex: Cópia da Identidade" required>
+                                </div>
+                                <div class="col-md-7">
+                                    <label class="form-label">Selecione o Ficheiro (PDF, JPG, PNG)</label>
+                                    <div class="input-group">
+                                        <input type="file" name="file" class="form-control" required>
+                                        <button type="submit" class="btn btn-success">Enviar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                        <ul class="list-group">
+                            {% for doc in documentos_pessoais %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ doc.tipo_documento }}</strong>
+                                        <small class="d-block text-muted">Enviado em: {{ doc.data_upload.strftime('%d/%m/%Y') }}</small>
+                                    </div>
+                                    <a href="{{ url_for('rh.uploaded_file', empresa_id=funcionario.empresa_id, funcionario_id=funcionario.id, filename=doc.nome_arquivo) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-download me-1"></i>Ver
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="list-group-item">Nenhum documento enviado.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="tab-pane fade" id="atestados" role="tabpanel">
+                        <form action="{{ url_for('rh.upload_documento', id=funcionario.id) }}" method="POST" enctype="multipart/form-data" class="mb-4 p-3 border rounded">
+                            <input type="hidden" name="upload_type" value="atestado">
+                            <label class="form-label">Enviar Novo Atestado (PDF, JPG, PNG)</label>
+                            <div class="input-group">
+                                <input type="file" name="file" class="form-control" required>
+                                <button type="submit" class="btn btn-success">Enviar</button>
+                            </div>
+                        </form>
+                        <ul class="list-group">
+                             {% for atestado in atestados %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Atestado enviado em {{ atestado.data_upload.strftime('%d/%m/%Y') }}
+                                    <a href="{{ url_for('rh.uploaded_file', empresa_id=funcionario.empresa_id, funcionario_id=funcionario.id, filename=atestado.nome_arquivo) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-download me-1"></i>Ver
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="list-group-item">Nenhum atestado enviado.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

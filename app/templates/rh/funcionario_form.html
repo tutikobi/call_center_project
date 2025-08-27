@@ -14,32 +14,32 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Nome Completo</label>
-                    <input type="text" name="nome" class="form-control" required>
+                    <input type="text" name="nome" class="form-control" value="{{ form_data.nome if form_data else '' }}" required>
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label">CPF</label>
-                    <input type="text" name="cpf" class="form-control" required>
+                    <input type="text" name="cpf" id="cpf" class="form-control" value="{{ form_data.cpf if form_data else '' }}" placeholder="000.000.000-00" required>
                 </div>
                  <div class="col-md-3 mb-3">
                     <label class="form-label">RG</label>
-                    <input type="text" name="rg" class="form-control" required>
+                    <input type="text" name="rg" class="form-control" value="{{ form_data.rg if form_data else '' }}" required>
                 </div>
             </div>
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Data de Nascimento</label>
-                    <input type="date" name="data_nascimento" class="form-control" required>
+                    <input type="date" name="data_nascimento" class="form-control" value="{{ form_data.data_nascimento if form_data else '' }}" required>
                 </div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Sexo</label>
                     <select name="sexo" class="form-select" required>
-                        <option value="M">Masculino</option>
-                        <option value="F">Feminino</option>
+                        <option value="M" {% if form_data and form_data.sexo == 'M' %}selected{% endif %}>Masculino</option>
+                        <option value="F" {% if form_data and form_data.sexo == 'F' %}selected{% endif %}>Feminino</option>
                     </select>
                 </div>
                  <div class="col-md-4 mb-3">
                     <label class="form-label">Estado Civil</label>
-                    <input type="text" name="estado_civil" class="form-control" required>
+                    <input type="text" name="estado_civil" class="form-control" value="{{ form_data.estado_civil if form_data else '' }}" required>
                 </div>
             </div>
 
@@ -48,31 +48,31 @@
              <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Telefone</label>
-                    <input type="text" name="telefone" class="form-control" required>
+                    <input type="text" name="telefone" id="telefone" class="form-control" value="{{ form_data.telefone if form_data else '' }}" placeholder="(00) 00000-0000" required>
                 </div>
                  <div class="col-md-6 mb-3">
                     <label class="form-label">E-mail</label>
-                    <input type="email" name="email" class="form-control" required>
+                    <input type="email" name="email" class="form-control" value="{{ form_data.email if form_data else '' }}" required>
                 </div>
             </div>
              <div class="row">
                 <div class="col-md-8 mb-3">
                     <label class="form-label">Endereço</label>
-                    <input type="text" name="endereco" class="form-control" required>
+                    <input type="text" name="endereco" class="form-control" value="{{ form_data.endereco if form_data else '' }}" required>
                 </div>
                  <div class="col-md-4 mb-3">
                     <label class="form-label">CEP</label>
-                    <input type="text" name="cep" class="form-control" required>
+                    <input type="text" name="cep" id="cep" class="form-control" value="{{ form_data.cep if form_data else '' }}" placeholder="00000-000" required>
                 </div>
             </div>
              <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Cidade</label>
-                    <input type="text" name="cidade" class="form-control" required>
+                    <input type="text" name="cidade" class="form-control" value="{{ form_data.cidade if form_data else '' }}" required>
                 </div>
                  <div class="col-md-6 mb-3">
                     <label class="form-label">Estado</label>
-                    <input type="text" name="estado" class="form-control" required>
+                    <input type="text" name="estado" class="form-control" value="{{ form_data.estado if form_data else '' }}" required>
                 </div>
             </div>
 
@@ -83,7 +83,7 @@
                     <label class="form-label">Cargo</label>
                     <select name="cargo_id" class="form-select" required>
                         {% for cargo in cargos %}
-                        <option value="{{ cargo.id }}">{{ cargo.nome }}</option>
+                        <option value="{{ cargo.id }}" {% if form_data and form_data.cargo_id == cargo.id|string %}selected{% endif %}>{{ cargo.nome }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -91,7 +91,7 @@
                     <label class="form-label">Departamento</label>
                     <select name="departamento_id" class="form-select" required>
                          {% for depto in departamentos %}
-                        <option value="{{ depto.id }}">{{ depto.nome }}</option>
+                        <option value="{{ depto.id }}" {% if form_data and form_data.departamento_id == depto.id|string %}selected{% endif %}>{{ depto.nome }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -99,11 +99,11 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Salário (R$)</label>
-                    <input type="number" step="0.01" name="salario" class="form-control" required>
+                    <input type="text" name="salario" id="salario" class="form-control" value="{{ form_data.salario if form_data else '' }}" required>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Data de Admissão</label>
-                    <input type="date" name="data_admissao" class="form-control" required>
+                    <input type="date" name="data_admissao" class="form-control" value="{{ form_data.data_admissao if form_data else '' }}" required>
                 </div>
             </div>
             
@@ -114,4 +114,41 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/imask"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Máscara para o CPF
+    IMask(document.getElementById('cpf'), {
+        mask: '000.000.000-00'
+    });
+
+    // Máscara para o Telefone
+    IMask(document.getElementById('telefone'), {
+        mask: '(00) 00000-0000'
+    });
+
+    // Máscara para o CEP
+    IMask(document.getElementById('cep'), {
+        mask: '00000-000'
+    });
+
+    // Máscara para o Salário (formatação automática)
+    IMask(document.getElementById('salario'), {
+        mask: 'R$ num',
+        blocks: {
+            num: {
+                mask: Number,
+                scale: 2,
+                thousandsSeparator: '.',
+                padFractionalZeros: true,
+                radix: ',',
+                mapToRadix: ['.']
+            }
+        }
+    });
+});
+</script>
 {% endblock %}
