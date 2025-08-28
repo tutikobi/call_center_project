@@ -7,12 +7,17 @@ from .config import Config
 import click
 from flask_migrate import Migrate
 from flask_socketio import SocketIO
-from decimal import Decimal # Importar Decimal
+from decimal import Decimal
+import os # Importar 'os'
 
 db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
-socketio = SocketIO()
+
+# --- ALTERAÇÃO PARA PRODUÇÃO ---
+# Configura o SocketIO para usar Redis se a URL estiver disponível
+redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+socketio = SocketIO(message_queue=redis_url)
 
 def create_app():
     """Cria e configura a instância da aplicação Flask."""
@@ -22,23 +27,22 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+    
+    # --- ALTERAÇÃO PARA PRODUÇÃO ---
+    # Inicializa o SocketIO com a app, mas a configuração já foi feita acima
     socketio.init_app(app)
 
-    # --- ALTERAÇÃO APLICADA AQUI: CRIAR E REGISTAR O FILTRO DE MOEDA ---
     def format_brl(value):
         """Filtro para formatar valores como moeda brasileira (R$)."""
         if value is None:
             return "R$ 0,00"
         try:
-            # Converte para Decimal para garantir precisão
             val = Decimal(value)
-            # Formata com 2 casas decimais, ponto como separador de milhar e vírgula para decimal
             return f"R$ {val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         except (ValueError, TypeError):
             return value
 
     app.jinja_env.filters['brl'] = format_brl
-    # --- FIM DA ALTERAÇÃO ---
 
     login_manager.login_view = 'auth.login'
     login_manager.login_message = "Por favor, faça login para acessar esta página."

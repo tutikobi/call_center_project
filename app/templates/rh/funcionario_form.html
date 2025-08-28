@@ -28,7 +28,7 @@
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Data de Nascimento</label>
-                    <input type="date" name="data_nascimento" class="form-control" value="{{ funcionario.data_nascimento.strftime('%Y-%m-%d') if funcionario else '' }}" required>
+                    <input type="date" name="data_nascimento" class="form-control" value="{{ funcionario.data_nascimento.strftime('%Y-%m-%d') if funcionario and funcionario.data_nascimento else '' }}" required>
                 </div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Sexo</label>
@@ -99,11 +99,11 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Salário (R$)</label>
-                    <input type="text" name="salario" id="salario" class="form-control" value="{{ funcionario.salario if funcionario else 'R$ 0,00' }}" required>
+                    <input type="text" name="salario" id="salario" class="form-control" value="{{ funcionario.salario|brl if funcionario else 'R$ 0,00' }}" required>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Data de Admissão</label>
-                    <input type="date" name="data_admissao" class="form-control" value="{{ funcionario.data_admissao.strftime('%Y-%m-%d') if funcionario else '' }}" required>
+                    <input type="date" name="data_admissao" class="form-control" value="{{ funcionario.data_admissao.strftime('%Y-%m-%d') if funcionario and funcionario.data_admissao else '' }}" required>
                 </div>
             </div>
             <div class="row">
@@ -128,7 +128,7 @@
                 <div id="vt_details" class="{% if not funcionario or not funcionario.recebe_vt %}d-none{% endif %}">
                     <label class="form-label">Valor Diário do VT (R$)</label>
                     <input type="text" name="vale_transporte_diario" id="vale_transporte" class="form-control" 
-                           value="{{ funcionario.vale_transporte_diario if funcionario else 'R$ 0,00' }}">
+                           value="{{ funcionario.vale_transporte_diario|brl if funcionario else 'R$ 0,00' }}">
                 </div>
             </div>
 
@@ -139,9 +139,9 @@
                     <label class="form-check-label" for="recebe_va"><strong>Ativar Vale Alimentação (VA)</strong></label>
                 </div>
                 <div id="va_details" class="{% if not funcionario or not funcionario.recebe_va %}d-none{% endif %}">
-                    <label class="form-label">Valor Mensal do VA (R$)</label>
-                    <input type="text" name="vale_alimentacao_mensal" id="vale_alimentacao" class="form-control"
-                           value="{{ funcionario.vale_alimentacao_mensal if funcionario else 'R$ 0,00' }}">
+                    <label class="form-label">Valor Diário do VA (R$)</label> 
+                    <input type="text" name="vale_alimentacao_diario" id="vale_alimentacao" class="form-control"
+                           value="{{ funcionario.vale_alimentacao_diario|brl if funcionario else 'R$ 0,00' }}">
                 </div>
             </div>
 
@@ -152,9 +152,9 @@
                     <label class="form-check-label" for="recebe_vr"><strong>Ativar Vale Refeição (VR)</strong></label>
                 </div>
                 <div id="vr_details" class="{% if not funcionario or not funcionario.recebe_vr %}d-none{% endif %}">
-                    <label class="form-label">Valor Mensal do VR (R$)</label>
-                    <input type="text" name="vale_refeicao_mensal" id="vale_refeicao" class="form-control"
-                           value="{{ funcionario.vale_refeicao_mensal if funcionario else 'R$ 0,00' }}">
+                    <label class="form-label">Valor Diário do VR (R$)</label> 
+                    <input type="text" name="vale_refeicao_diario" id="vale_refeicao" class="form-control"
+                           value="{{ funcionario.vale_refeicao_diario|brl if funcionario else 'R$ 0,00' }}">
                 </div>
             </div>
             
@@ -186,6 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         scale: 2,
                         thousandsSeparator: '.',
                         padFractionalZeros: true,
+                        normalizeZeros: true,
                         radix: ',',
                         mapToRadix: ['.']
                     }

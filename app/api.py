@@ -2,13 +2,11 @@
 
 from flask import Blueprint, request, jsonify, current_app
 from .models import db, Avaliacao, ConversaWhatsApp, MensagemWhatsApp, Empresa, Usuario
-# --- IMPORTAÇÕES ADICIONADAS ---
 from app.models_rh import Funcionario, Departamento
 from app.rh.calculos import calcular_folha_pagamento
-# --- FIM DAS IMPORTAÇÕES ADICIONADAS ---
 from flask_login import login_required, current_user
 from datetime import datetime, time
-from sqlalchemy import func, cast, Date
+from sqlalchemy import func, cast, Date, desc
 import requests
 import json
 from .admin import admin_required
@@ -209,13 +207,13 @@ def dados_produtividade():
         Avaliacao.empresa_id == empresa_id
     ).scalar() or 0.0
     
-    agentes_query = Usuario.query.join(Usuario.departamento, isouter=True).filter(
+    agentes_query = Usuario.query.filter(
         Usuario.empresa_id == empresa_id,
         Usuario.role.in_(['agente', 'admin_empresa'])
-    ).all()
-    
+    )
+
     agentes = []
-    for agente in agentes_query:
+    for agente in agentes_query.all():
         atendimentos_hoje = ConversaWhatsApp.query.filter(
             ConversaWhatsApp.agente_atribuido_id == agente.id,
             cast(ConversaWhatsApp.created_at, Date) == hoje
@@ -231,7 +229,6 @@ def dados_produtividade():
         agente_tma_min = int(agente_tma_query // 60)
         agente_tma_sec = int(agente_tma_query % 60)
 
-        # --- ALTERAÇÃO: CALCULAR OS ASSUNTOS MAIS ATENDIDOS ---
         top_assuntos_query = db.session.query(
             ConversaWhatsApp.assunto, func.count(ConversaWhatsApp.id).label('total')
         ).filter(
@@ -242,13 +239,13 @@ def dados_produtividade():
         top_assuntos = [{"assunto": a.assunto, "total": a.total} for a in top_assuntos_query]
         
         agentes.append({
-            "id": agente.id, # Adicionado ID para o link
+            "id": agente.id,
             "nome": agente.nome,
             "setor": agente.departamento.nome if agente.departamento else "Sem Setor",
             "atendimentos": atendimentos_hoje,
             "tma": f"{agente_tma_min:02d}:{agente_tma_sec:02d}",
             "status": agente.status_agente,
-            "top_assuntos": top_assuntos # Adicionado ao JSON
+            "top_assuntos": top_assuntos
         })
     
     return jsonify({
@@ -259,7 +256,6 @@ def dados_produtividade():
         "agentes": agentes
     })
 
-# --- NOVA ROTA PARA O DASHBOARD FINANCEIRO DE RH ---
 @bp.route('/rh/dados_dashboard_financeiro')
 @login_required
 def dados_dashboard_financeiro():
@@ -268,12 +264,9 @@ def dados_dashboard_financeiro():
 
     if not funcionarios_ativos:
         return jsonify({
-            "total_funcionarios": 0,
-            "custo_total_empresa": 0,
-            "total_salarios_liquidos": 0,
-            "total_beneficios": 0,
-            "total_impostos": 0,
-            "distribuicao_custos": {'labels': [], 'data': []}
+            "total_funcionarios": 0, "custo_total_empresa": 0,
+            "total_salarios_liquidos": 0, "total_beneficios": 0,
+            "total_impostos": 0, "distribuicao_custos": {'labels': [], 'data': []}
         })
 
     custo_total = 0

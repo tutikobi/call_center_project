@@ -13,7 +13,7 @@ class BaseModel(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class Empresa(BaseModel):
-    """Modelo Empresa com sistema de planos"""
+    """Modelo Empresa com sistema de planos e chaves de API"""
     __tablename__ = 'empresa'
     nome_empresa = db.Column(db.String(100), nullable=False)
     cnpj = db.Column(db.String(18), unique=True, nullable=False)
@@ -25,14 +25,8 @@ class Empresa(BaseModel):
     forma_pagamento = db.Column(db.String(50), default='boleto')
     monitorar_reputacao = db.Column(db.Boolean, default=False)
     google_reviews_url = db.Column(db.String(255), nullable=True)
-    
-    # --- CORREÇÃO APLICADA AQUI ---
     reclame_a_qui_url = db.Column(db.String(255), nullable=True)
-    
     google_place_id = db.Column(db.String(255), nullable=True)
-    whatsapp_token = db.Column(db.String(255), nullable=True)
-    whatsapp_url = db.Column(db.String(255), nullable=True)
-    webhook_verify_token = db.Column(db.String(255), nullable=True)
     status_pagamento = db.Column(db.String(20), nullable=False, default='em_dia')
     duracao_contrato_meses = db.Column(db.Integer, default=12)
 
@@ -49,7 +43,19 @@ class Empresa(BaseModel):
     valor_mensal = db.Column(db.Float, default=0.0)
     max_usuarios = db.Column(db.Integer, default=10)
     max_tickets_mes = db.Column(db.Integer, default=500)
+
+    # --- CAMPOS DE API ATUALIZADOS E CENTRALIZADOS ---
+    # WhatsApp Business API
+    whatsapp_token = db.Column(db.String(255), nullable=True)
+    whatsapp_phone_number_id = db.Column(db.String(255), nullable=True) # ID do número de telefone
+    whatsapp_business_account_id = db.Column(db.String(255), nullable=True) # ID da conta do business
+    webhook_verify_token = db.Column(db.String(255), nullable=True)
     
+    # API de Email (Ex: SendGrid, Mailgun, etc.)
+    email_api_key = db.Column(db.String(255), nullable=True)
+    email_sender = db.Column(db.String(120), nullable=True) # Email remetente verificado no provedor
+
+    # Relacionamentos
     usuarios = db.relationship('Usuario', backref='empresa', lazy=True, cascade="all, delete-orphan")
     avaliacoes = db.relationship('Avaliacao', backref='empresa', lazy=True, cascade="all, delete-orphan")
     conversas = db.relationship('ConversaWhatsApp', backref='empresa', lazy=True, cascade="all, delete-orphan")

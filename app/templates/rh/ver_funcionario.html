@@ -40,6 +40,9 @@
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">Ações</h5>
+                <a href="{{ url_for('rh.simular_folha_pagamento', id=funcionario.id) }}" class="btn btn-primary w-100 mb-2">
+                    <i class="fas fa-file-invoice-dollar me-2"></i>Simular Folha Pag.
+                </a>
                 <a href="{{ url_for('rh.calcular_rescisao_funcionario', id=funcionario.id) }}" class="btn btn-danger w-100">
                     <i class="fas fa-calculator me-2"></i>Simular Rescisão
                 </a>
@@ -51,7 +54,7 @@
             <div class="card-header">
                 <ul class="nav nav-tabs card-header-tabs" id="myTab" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="dados-tab" data-bs-toggle="tab" data-bs-target="#dados" type="button" role="tab">Dados Pessoais</button>
+                        <button class="nav-link active" id="dados-tab" data-bs-toggle="tab" data-bs-target="#dados" type="button" role="tab">Dados e Benefícios</button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="docs-tab" data-bs-toggle="tab" data-bs-target="#docs" type="button" role="tab">Documentos</button>
@@ -59,16 +62,46 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="atestados-tab" data-bs-toggle="tab" data-bs-target="#atestados" type="button" role="tab">Atestados</button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="afastamentos-tab" data-bs-toggle="tab" data-bs-target="#afastamentos" type="button" role="tab">Férias/Afastamentos</button>
+                    </li>
                 </ul>
             </div>
             <div class="card-body">
                 <div class="tab-content" id="myTabContent">
                     <div class="tab-pane fade show active" id="dados" role="tabpanel">
+                        <h5 class="mb-3">Dados Pessoais e Contrato</h5>
                         <p><strong>Email:</strong> {{ funcionario.email }}</p>
                         <p><strong>Telefone:</strong> {{ funcionario.telefone }}</p>
                         <p><strong>CPF:</strong> {{ funcionario.cpf }}</p>
                         <p><strong>Departamento:</strong> {{ funcionario.departamento.nome }}</p>
                         <p><strong>Data de Admissão:</strong> {{ funcionario.data_admissao.strftime('%d/%m/%Y') }}</p>
+                        
+                        <hr class="my-4">
+                        <h5 class="mb-3">Benefícios (Previsão para o Mês Corrente)</h5>
+                        <p class="text-muted"><small>Cálculo baseado em {{ dias_uteis }} dias úteis para a jornada {{ funcionario.jornada_trabalho }}.</small></p>
+
+                        {% if funcionario.recebe_vt %}
+                            <p><strong>Vale Transporte (VT):</strong> {{ funcionario.vale_transporte_diario|brl }} / dia
+                                <span class="badge bg-success ms-2">Total Mês: {{ total_vt|brl }}</span>
+                            </p>
+                        {% endif %}
+
+                        {% if funcionario.recebe_va %}
+                            <p><strong>Vale Alimentação (VA):</strong> {{ funcionario.vale_alimentacao_diario|brl }} / dia
+                                <span class="badge bg-success ms-2">Total Mês: {{ total_va|brl }}</span>
+                            </p>
+                        {% endif %}
+
+                        {% if funcionario.recebe_vr %}
+                            <p><strong>Vale Refeição (VR):</strong> {{ funcionario.vale_refeicao_diario|brl }} / dia
+                                <span class="badge bg-success ms-2">Total Mês: {{ total_vr|brl }}</span>
+                            </p>
+                        {% endif %}
+
+                        {% if not funcionario.recebe_vt and not funcionario.recebe_va and not funcionario.recebe_vr %}
+                            <div class="alert alert-secondary">Nenhum benefício ativo para este funcionário.</div>
+                        {% endif %}
                     </div>
                     <div class="tab-pane fade" id="docs" role="tabpanel">
                         <form action="{{ url_for('rh.upload_documento', id=funcionario.id) }}" method="POST" enctype="multipart/form-data" class="mb-4 p-3 border rounded">
@@ -124,6 +157,37 @@
                                 <li class="list-group-item">Nenhum atestado enviado.</li>
                             {% endfor %}
                         </ul>
+                    </div>
+                    <div class="tab-pane fade" id="afastamentos" role="tabpanel">
+                        <div class="d-flex justify-content-end mb-3">
+                            <a href="{{ url_for('rh.registrar_afastamento', id=funcionario.id) }}" class="btn btn-success">
+                                <i class="fas fa-plus me-2"></i>Registrar Novo Afastamento
+                            </a>
+                        </div>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Motivo</th>
+                                    <th>Início</th>
+                                    <th>Fim</th>
+                                    <th>Observações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for afastamento in afastamentos %}
+                                <tr>
+                                    <td><span class="badge bg-info">{{ afastamento.motivo }}</span></td>
+                                    <td>{{ afastamento.data_inicio.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ afastamento.data_fim.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ afastamento.observacoes or 'N/A' }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">Nenhum registro de férias ou afastamento encontrado.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

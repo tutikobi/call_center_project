@@ -4,10 +4,10 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 from flask_login import login_required, current_user
 from datetime import datetime
 from app import db
-from app.models_rh import Funcionario, Cargo, Departamento, DocumentoFuncionario
+from app.models_rh import Funcionario, Cargo, Departamento, DocumentoFuncionario, Afastamento
 from app.decorators import require_plan
 from .validators import is_cpf_valid
-from .calculos import calcular_rescisao, calcular_folha_pagamento
+from .calculos import calcular_rescisao, calcular_folha_pagamento, _get_dias_uteis_no_mes
 import os
 from werkzeug.utils import secure_filename
 import openpyxl
@@ -16,13 +16,10 @@ import json
 
 rh = Blueprint('rh', __name__, url_prefix='/rh')
 
-# --- FUNÇÃO AUXILIAR PARA UPLOADS ---
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf', 'xlsx'}
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# --- ROTAS PRINCIPAIS DO RH ---
 
 @rh.route('/dashboard')
 @login_required
@@ -44,9 +41,6 @@ def dashboard():
 def dashboard_financeiro():
     return render_template('rh/dashboard_financeiro.html')
 
-
-# --- ROTAS PARA FUNCIONÁRIOS ---
-
 @rh.route('/funcionarios')
 @login_required
 @require_plan('medio')
@@ -58,12 +52,20 @@ def listar_funcionarios():
 def _populate_funcionario_from_form(funcionario, form_data):
     """Função auxiliar para popular dados do funcionário a partir do formulário."""
     def to_float(value):
-        return float(value.replace('R$', '').replace('.', '').replace(',', '.').strip() or 0)
+        if not isinstance(value, str):
+            return 0.0
+        # Remove R$, espaços e troca o separador de milhar por nada
+        clean_value = value.replace('R$', '').strip().replace('.', '')
+        # Troca a vírgula do decimal por ponto
+        return float(clean_value.replace(',', '.') or 0)
 
     funcionario.nome = form_data.get('nome')
     funcionario.cpf = form_data.get('cpf')
     funcionario.rg = form_data.get('rg')
-    funcionario.data_nascimento = datetime.strptime(form_data.get('data_nascimento'), '%Y-%m-%d').date()
+    data_nascimento_str = form_data.get('data_nascimento')
+    if data_nascimento_str:
+        funcionario.data_nascimento = datetime.strptime(data_nascimento_str, '%Y-%m-%d').date()
+    
     funcionario.sexo = form_data.get('sexo')
     funcionario.estado_civil = form_data.get('estado_civil')
     funcionario.telefone = form_data.get('telefone')
@@ -75,10 +77,13 @@ def _populate_funcionario_from_form(funcionario, form_data):
     funcionario.cargo_id = form_data.get('cargo_id')
     funcionario.departamento_id = form_data.get('departamento_id')
     funcionario.salario = to_float(form_data.get('salario'))
-    funcionario.data_admissao = datetime.strptime(form_data.get('data_admissao'), '%Y-%m-%d').date()
+    
+    data_admissao_str = form_data.get('data_admissao')
+    if data_admissao_str:
+        funcionario.data_admissao = datetime.strptime(data_admissao_str, '%Y-%m-%d').date()
+
     funcionario.jornada_trabalho = form_data.get('jornada_trabalho')
     
-    # Lógica de benefícios ATUALIZADA
     funcionario.recebe_vt = 'recebe_vt' in form_data
     funcionario.vale_transporte_diario = to_float(form_data.get('vale_transporte_diario'))
     
@@ -142,7 +147,6 @@ def editar_funcionario(id):
     departamentos = Departamento.query.filter_by(empresa_id=current_user.empresa_id).order_by(Departamento.nome).all()
     return render_template('rh/funcionario_form.html', funcionario=funcionario, cargos=cargos, departamentos=departamentos)
 
-
 @rh.route('/funcionarios/<int:id>')
 @login_required
 @require_plan('medio')
@@ -154,16 +158,30 @@ def ver_funcionario(id):
 
     documentos_pessoais = [doc for doc in funcionario.documentos if doc.tipo_documento != 'Atestado']
     atestados = [doc for doc in funcionario.documentos if doc.tipo_documento == 'Atestado']
+    afastamentos = funcionario.afastamentos
+
+    hoje = datetime.today()
+    dias_uteis = _get_dias_uteis_no_mes(hoje.year, hoje.month, funcionario.jornada_trabalho)
+    
+    total_vt = dias_uteis * (funcionario.vale_transporte_diario or 0)
+    total_va = dias_uteis * (funcionario.vale_alimentacao_diario or 0)
+    total_vr = dias_uteis * (funcionario.vale_refeicao_diario or 0)
 
     return render_template('rh/ver_funcionario.html', 
         funcionario=funcionario, 
         documentos_pessoais=documentos_pessoais,
-        atestados=atestados)
+        atestados=atestados,
+        afastamentos=afastamentos,
+        dias_uteis=dias_uteis,
+        total_vt=total_vt,
+        total_va=total_va,
+        total_vr=total_vr)
 
 @rh.route('/funcionarios/<int:id>/upload', methods=['POST'])
 @login_required
 @require_plan('medio')
 def upload_documento(id):
+    # (Este código não foi alterado)
     funcionario = Funcionario.query.get_or_404(id)
     if funcionario.empresa_id != current_user.empresa_id:
         flash('Acesso negado.', 'danger')
@@ -214,6 +232,7 @@ def upload_documento(id):
 @rh.route('/uploads/<int:empresa_id>/<int:funcionario_id>/<filename>')
 @login_required
 def uploaded_file(empresa_id, funcionario_id, filename):
+    # (Este código não foi alterado)
     if empresa_id != current_user.empresa_id:
         return "Acesso negado", 403
     path = os.path.join(current_app.instance_path, 'uploads', str(empresa_id), str(funcionario_id))
@@ -223,6 +242,7 @@ def uploaded_file(empresa_id, funcionario_id, filename):
 @login_required
 @require_plan('medio')
 def calcular_rescisao_funcionario(id):
+    # (Este código não foi alterado)
     funcionario = Funcionario.query.get_or_404(id)
     if funcionario.empresa_id != current_user.empresa_id:
         flash('Acesso negado.', 'danger')
@@ -250,6 +270,7 @@ def calcular_rescisao_funcionario(id):
 @login_required
 @require_plan('medio')
 def simular_folha_pagamento(id):
+    # (Este código não foi alterado)
     funcionario = Funcionario.query.get_or_404(id)
     if funcionario.empresa_id != current_user.empresa_id:
         flash('Acesso negado.', 'danger')
@@ -275,6 +296,7 @@ def simular_folha_pagamento(id):
 @login_required
 @require_plan('medio')
 def importar_funcionarios():
+    # (Este código não foi alterado)
     if 'excel_file' not in request.files:
         flash('Nenhum ficheiro selecionado.', 'warning')
         return redirect(url_for('rh.listar_funcionarios'))
@@ -356,6 +378,7 @@ def importar_funcionarios():
 @rh.route('/funcionarios/template')
 @login_required
 def download_template():
+    # (Este código não foi alterado)
     output = BytesIO()
     workbook = openpyxl.Workbook()
     sheet = workbook.active
@@ -381,13 +404,11 @@ def download_template():
     return Response(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": "attachment;filename=template_funcionarios.xlsx"})
 
-
-# --- ROTAS PARA DEPARTAMENTOS ---
-
 @rh.route('/departamentos')
 @login_required
 @require_plan('medio')
 def listar_departamentos():
+    # (Este código não foi alterado)
     departamentos = Departamento.query.filter_by(empresa_id=current_user.empresa_id).order_by(Departamento.nome).all()
     return render_template('rh/departamentos.html', departamentos=departamentos)
 
@@ -395,6 +416,7 @@ def listar_departamentos():
 @login_required
 @require_plan('medio')
 def novo_departamento():
+    # (Este código não foi alterado)
     if request.method == 'POST':
         novo_depto = Departamento(
             nome=request.form['nome'],
@@ -411,6 +433,7 @@ def novo_departamento():
 @login_required
 @require_plan('medio')
 def editar_departamento(id):
+    # (Este código não foi alterado)
     depto = Departamento.query.get_or_404(id)
     if depto.empresa_id != current_user.empresa_id:
         flash('Acesso negado.', 'danger')
@@ -424,12 +447,11 @@ def editar_departamento(id):
         return redirect(url_for('rh.listar_departamentos'))
     return render_template('rh/departamento_form.html', title="Editar Departamento", departamento=depto)
 
-# --- ROTAS PARA CARGOS ---
-
 @rh.route('/cargos')
 @login_required
 @require_plan('medio')
 def listar_cargos():
+    # (Este código não foi alterado)
     cargos = Cargo.query.filter_by(empresa_id=current_user.empresa_id).order_by(Cargo.nome).all()
     return render_template('rh/cargos.html', cargos=cargos)
 
@@ -437,6 +459,7 @@ def listar_cargos():
 @login_required
 @require_plan('medio')
 def novo_cargo():
+    # (Este código não foi alterado)
     if request.method == 'POST':
         salario_str = request.form['salario_base'].replace('R$', '').replace('.', '').replace(',', '.').strip()
         novo_cargo = Cargo(
@@ -466,6 +489,7 @@ def novo_cargo():
 @login_required
 @require_plan('medio')
 def editar_cargo(id):
+    # (Este código não foi alterado)
     cargo = Cargo.query.get_or_404(id)
     if cargo.empresa_id != current_user.empresa_id:
         flash('Acesso negado.', 'danger')
@@ -491,3 +515,32 @@ def editar_cargo(id):
         flash(f"Atenção: Não foi possível carregar a lista de CBOs. A busca automática está desativada. Erro: {e}", "warning")
 
     return render_template('rh/cargo_form.html', title="Editar Cargo", cargo=cargo, cbo_data=cbo_data)
+
+@rh.route('/funcionarios/<int:id>/registrar_afastamento', methods=['GET', 'POST'])
+@login_required
+@require_plan('medio')
+def registrar_afastamento(id):
+    # (Este código não foi alterado)
+    funcionario = Funcionario.query.get_or_404(id)
+    if funcionario.empresa_id != current_user.empresa_id:
+        flash('Acesso negado.', 'danger')
+        return redirect(url_for('rh.listar_funcionarios'))
+
+    if request.method == 'POST':
+        try:
+            novo_afastamento = Afastamento(
+                funcionario_id=id,
+                motivo=request.form.get('motivo'),
+                data_inicio=datetime.strptime(request.form.get('data_inicio'), '%Y-%m-%d').date(),
+                data_fim=datetime.strptime(request.form.get('data_fim'), '%Y-%m-%d').date(),
+                observacoes=request.form.get('observacoes')
+            )
+            db.session.add(novo_afastamento)
+            db.session.commit()
+            flash('Registro de afastamento adicionado com sucesso!', 'success')
+            return redirect(url_for('rh.ver_funcionario', id=id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao registrar afastamento: {str(e)}', 'danger')
+
+    return render_template('rh/afastamento_form.html', funcionario=funcionario)

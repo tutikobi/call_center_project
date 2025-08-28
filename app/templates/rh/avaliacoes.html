@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Avaliações de Desempenho{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Avaliações de Desempenho</h1>
+    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#novaAvaliacaoModal">
+        <i class="fas fa-plus me-2"></i>Nova Avaliação
+    </button>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Funcionário</th>
+                        <th>Período</th>
+                        <th>Nota Final</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for avaliacao in avaliacoes %}
+                    <tr>
+                        <td>{{ avaliacao.funcionario.nome }}</td>
+                        <td>{{ avaliacao.periodo_inicio.strftime('%d/%m/%Y') }} a {{ avaliacao.periodo_fim.strftime('%d/%m/%Y') }}</td>
+                        <td><span class="badge bg-primary">{{ '%.2f'|format(avaliacao.nota_final) }}</span></td>
+                        <td><span class="badge bg-success">{{ avaliacao.status|capitalize }}</span></td>
+                        <td>{{ avaliacao.created_at.strftime('%d/%m/%Y') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted p-4">Nenhuma avaliação encontrada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="novaAvaliacaoModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Registrar Nova Avaliação</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="{{ url_for('rh.nova_avaliacao') }}" method="POST">
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label class="form-label">Funcionário</label>
+                    <select name="funcionario_id" class="form-select" required>
+                        {% for func in funcionarios %}
+                        <option value="{{ func.id }}">{{ func.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Período (Início)</label>
+                    <input type="date" name="periodo_inicio" class="form-control" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Período (Fim)</label>
+                    <input type="date" name="periodo_fim" class="form-control" required>
+                </div>
+            </div>
+            <hr>
+            <p><strong>Critérios (Nota de 1 a 5)</strong></p>
+            <div class="row">
+                <div class="col-md-4 mb-3"><label>Produtividade</label><input type="number" name="produtividade" class="form-control" min="1" max="5" required></div>
+                <div class="col-md-4 mb-3"><label>Qualidade</label><input type="number" name="qualidade" class="form-control" min="1" max="5" required></div>
+                <div class="col-md-4 mb-3"><label>Pontualidade</label><input type="number" name="pontualidade" class="form-control" min="1" max="5" required></div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3"><label>Relacionamento Interpessoal</label><input type="number" name="relacionamento" class="form-control" min="1" max="5" required></div>
+                <div class="col-md-6 mb-3"><label>Iniciativa</label><input type="number" name="iniciativa" class="form-control" min="1" max="5" required></div>
+            </div>
+            <hr>
+            <div class="mb-3">
+                <label class="form-label">Comentários e Feedbacks</label>
+                <textarea name="comentarios" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Metas e Objetivos Futuros</label>
+                <textarea name="objetivos_proximos" class="form-control" rows="3"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">Salvar Avaliação</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

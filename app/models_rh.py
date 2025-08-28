@@ -21,7 +21,14 @@ class Funcionario(BaseModel):
     matricula = db.Column(db.String(20), unique=True, nullable=False)
     cargo_id = db.Column(db.Integer, db.ForeignKey('cargos.id'), nullable=False)
     departamento_id = db.Column(db.Integer, db.ForeignKey('departamentos.id'), nullable=False)
-    salario = db.Column(db.Numeric(10, 2), nullable=False)
+    
+    # --- LINHAS ALTERADAS AQUI (DE 12 PARA 15) ---
+    salario = db.Column(db.Numeric(15, 2), nullable=False)
+    vale_transporte_diario = db.Column(db.Numeric(15, 2), default=0.0)
+    vale_alimentacao_diario = db.Column(db.Numeric(15, 2), default=0.0)
+    vale_refeicao_diario = db.Column(db.Numeric(15, 2), default=0.0)
+    # --- FIM DA ALTERAÇÃO ---
+
     data_admissao = db.Column(db.Date, nullable=False)
     data_demissao = db.Column(db.Date, nullable=True)
     status = db.Column(db.String(20), default='ativo')
@@ -30,12 +37,6 @@ class Funcionario(BaseModel):
     
     jornada_trabalho = db.Column(db.String(20), default='5x2') 
     
-    # --- CAMPOS DE VALOR (AGORA TODOS DIÁRIOS) ---
-    vale_transporte_diario = db.Column(db.Numeric(10, 2), default=0.0)
-    vale_alimentacao_diario = db.Column(db.Numeric(10, 2), default=0.0) # ATUALIZADO
-    vale_refeicao_diario = db.Column(db.Numeric(10, 2), default=0.0)    # ATUALIZADO
-    
-    # --- CAMPOS DE CONTROLE (BOOLEAN) ---
     recebe_vt = db.Column(db.Boolean, default=False)
     recebe_va = db.Column(db.Boolean, default=False)
     recebe_vr = db.Column(db.Boolean, default=False)
@@ -46,8 +47,8 @@ class Funcionario(BaseModel):
     folhas = db.relationship('FolhaPagamento', backref='funcionario', lazy='dynamic')
     departamento = db.relationship('Departamento', foreign_keys=[departamento_id], back_populates='funcionarios')
     documentos = db.relationship('DocumentoFuncionario', backref='funcionario', lazy=True, cascade="all, delete-orphan")
+    afastamentos = db.relationship('Afastamento', backref='funcionario', lazy=True, order_by='Afastamento.data_inicio.desc()')
 
-# ... (o resto do arquivo permanece igual)
 class Cargo(BaseModel):
     __tablename__ = 'cargos'
     nome = db.Column(db.String(100), nullable=False)
@@ -127,3 +128,12 @@ class BeneficioFuncionario(BaseModel):
     ativo = db.Column(db.Boolean, default=True)
     data_inicio = db.Column(db.Date, nullable=False)
     data_fim = db.Column(db.Date, nullable=True)
+
+class Afastamento(BaseModel):
+    __tablename__ = 'afastamentos'
+    id = db.Column(db.Integer, primary_key=True)
+    motivo = db.Column(db.String(100), nullable=False)
+    data_inicio = db.Column(db.Date, nullable=False)
+    data_fim = db.Column(db.Date, nullable=False)
+    observacoes = db.Column(db.Text, nullable=True)
+    funcionario_id = db.Column(db.Integer, db.ForeignKey('funcionarios.id'), nullable=False)

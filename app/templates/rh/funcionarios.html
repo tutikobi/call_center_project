@@ -1,221 +1,89 @@
 {% extends "base.html" %}
 
-{% block title %}
-{% if funcionario %}Editar Funcionário{% else %}Novo Funcionário{% endif %}
-{% endblock %}
+{% block title %}Gestão de Funcionários{% endblock %}
 
 {% block content %}
-<h1 class="h2 mb-4">{% if funcionario %}Editar Funcionário: {{ funcionario.nome }}{% else %}Novo Funcionário{% endif %}</h1>
-
-<div class="card">
-    <div class="card-body">
-        <form method="POST">
-            <h5 class="mb-3">Dados Pessoais</h5>
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Nome Completo</label>
-                    <input type="text" name="nome" class="form-control" value="{{ funcionario.nome if funcionario else '' }}" required>
-                </div>
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">CPF</label>
-                    <input type="text" name="cpf" id="cpf" class="form-control" value="{{ funcionario.cpf if funcionario else '' }}" placeholder="000.000.000-00" required>
-                </div>
-                 <div class="col-md-3 mb-3">
-                    <label class="form-label">RG</label>
-                    <input type="text" name="rg" class="form-control" value="{{ funcionario.rg if funcionario else '' }}">
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Data de Nascimento</label>
-                    <input type="date" name="data_nascimento" class="form-control" value="{{ funcionario.data_nascimento.strftime('%Y-%m-%d') if funcionario else '' }}" required>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Sexo</label>
-                    <select name="sexo" class="form-select" required>
-                        <option value="M" {% if funcionario and funcionario.sexo == 'M' %}selected{% endif %}>Masculino</option>
-                        <option value="F" {% if funcionario and funcionario.sexo == 'F' %}selected{% endif %}>Feminino</option>
-                    </select>
-                </div>
-                 <div class="col-md-4 mb-3">
-                    <label class="form-label">Estado Civil</label>
-                    <input type="text" name="estado_civil" class="form-control" value="{{ funcionario.estado_civil if funcionario else '' }}">
-                </div>
-            </div>
-
-            <hr class="my-4">
-            <h5 class="mb-3">Contato e Endereço</h5>
-             <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Telefone</label>
-                    <input type="text" name="telefone" id="telefone" class="form-control" value="{{ funcionario.telefone if funcionario else '' }}" placeholder="(00) 00000-0000">
-                </div>
-                 <div class="col-md-6 mb-3">
-                    <label class="form-label">E-mail</label>
-                    <input type="email" name="email" class="form-control" value="{{ funcionario.email if funcionario else '' }}" required>
-                </div>
-            </div>
-             <div class="row">
-                <div class="col-md-8 mb-3">
-                    <label class="form-label">Endereço</label>
-                    <input type="text" name="endereco" class="form-control" value="{{ funcionario.endereco if funcionario else '' }}">
-                </div>
-                 <div class="col-md-4 mb-3">
-                    <label class="form-label">CEP</label>
-                    <input type="text" name="cep" id="cep" class="form-control" value="{{ funcionario.cep if funcionario else '' }}" placeholder="00000-000">
-                </div>
-            </div>
-             <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Cidade</label>
-                    <input type="text" name="cidade" class="form-control" value="{{ funcionario.cidade if funcionario else '' }}">
-                </div>
-                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Estado</label>
-                    <input type="text" name="estado" class="form-control" value="{{ funcionario.estado if funcionario else '' }}">
-                </div>
-            </div>
-
-            <hr class="my-4">
-            <h5 class="mb-3">Dados Profissionais</h5>
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Cargo</label>
-                    <select name="cargo_id" class="form-select" required>
-                        {% for cargo in cargos %}
-                        <option value="{{ cargo.id }}" {% if funcionario and funcionario.cargo_id == cargo.id %}selected{% endif %}>{{ cargo.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Departamento</label>
-                    <select name="departamento_id" class="form-select" required>
-                         {% for depto in departamentos %}
-                        <option value="{{ depto.id }}" {% if funcionario and funcionario.departamento_id == depto.id %}selected{% endif %}>{{ depto.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Salário (R$)</label>
-                    <input type="text" name="salario" id="salario" class="form-control" value="{{ funcionario.salario if funcionario else 'R$ 0,00' }}" required>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Data de Admissão</label>
-                    <input type="date" name="data_admissao" class="form-control" value="{{ funcionario.data_admissao.strftime('%Y-%m-%d') if funcionario else '' }}" required>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Jornada de Trabalho</label>
-                    <select name="jornada_trabalho" class="form-select" required>
-                        <option value="5x2" {% if funcionario and funcionario.jornada_trabalho == '5x2' %}selected{% endif %}>5x2 (Seg-Sex)</option>
-                        <option value="6x1" {% if funcionario and funcionario.jornada_trabalho == '6x1' %}selected{% endif %}>6x1 (Seg-Sáb)</option>
-                    </select>
-                </div>
-            </div>
-
-            <hr class="my-4">
-            <h5 class="mb-3">Gestão de Benefícios</h5>
-            
-            <div class="mb-3 p-3 border rounded">
-                <div class="form-check form-switch mb-2">
-                    <input class="form-check-input" type="checkbox" role="switch" id="recebe_vt" name="recebe_vt" 
-                           {% if funcionario and funcionario.recebe_vt %}checked{% endif %}>
-                    <label class="form-check-label" for="recebe_vt"><strong>Ativar Vale Transporte (VT)</strong></label>
-                </div>
-                <div id="vt_details" class="{% if not funcionario or not funcionario.recebe_vt %}d-none{% endif %}">
-                    <label class="form-label">Valor Diário do VT (R$)</label>
-                    <input type="text" name="vale_transporte_diario" id="vale_transporte" class="form-control" 
-                           value="{{ funcionario.vale_transporte_diario if funcionario else 'R$ 0,00' }}">
-                </div>
-            </div>
-
-            <div class="mb-3 p-3 border rounded">
-                <div class="form-check form-switch mb-2">
-                    <input class="form-check-input" type="checkbox" role="switch" id="recebe_va" name="recebe_va"
-                           {% if funcionario and funcionario.recebe_va %}checked{% endif %}>
-                    <label class="form-check-label" for="recebe_va"><strong>Ativar Vale Alimentação (VA)</strong></label>
-                </div>
-                <div id="va_details" class="{% if not funcionario or not funcionario.recebe_va %}d-none{% endif %}">
-                    <label class="form-label">Valor Diário do VA (R$)</label> 
-                    <input type="text" name="vale_alimentacao_diario" id="vale_alimentacao" class="form-control"
-                           value="{{ funcionario.vale_alimentacao_diario if funcionario else 'R$ 0,00' }}">
-                </div>
-            </div>
-
-            <div class="mb-3 p-3 border rounded">
-                <div class="form-check form-switch mb-2">
-                    <input class="form-check-input" type="checkbox" role="switch" id="recebe_vr" name="recebe_vr"
-                           {% if funcionario and funcionario.recebe_vr %}checked{% endif %}>
-                    <label class="form-check-label" for="recebe_vr"><strong>Ativar Vale Refeição (VR)</strong></label>
-                </div>
-                <div id="vr_details" class="{% if not funcionario or not funcionario.recebe_vr %}d-none{% endif %}">
-                    <label class="form-label">Valor Diário do VR (R$)</label> 
-                    <input type="text" name="vale_refeicao_diario" id="vale_refeicao" class="form-control"
-                           value="{{ funcionario.vale_refeicao_diario if funcionario else 'R$ 0,00' }}">
-                </div>
-            </div>
-            
-            <div class="d-flex justify-content-end mt-4">
-                <a href="{{ url_for('rh.listar_funcionarios') }}" class="btn btn-secondary me-2">Cancelar</a>
-                <button type="submit" class="btn btn-success">Salvar</button>
-            </div>
-        </form>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Gestão de Funcionários</h1>
+    <div>
+        <a href="{{ url_for('rh.download_template') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-file-excel me-2"></i>Baixar Modelo
+        </a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#importModal">
+            <i class="fas fa-upload me-2"></i>Importar Excel
+        </button>
+        <a href="{{ url_for('rh.novo_funcionario') }}" class="btn btn-success">
+            <i class="fas fa-plus me-2"></i>Novo Funcionário
+        </a>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
-<script src="https://unpkg.com/imask"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    IMask(document.getElementById('cpf'), { mask: '000.000.000-00' });
-    IMask(document.getElementById('telefone'), { mask: '(00) 00000-0000' });
-    IMask(document.getElementById('cep'), { mask: '00000-000' });
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>CPF</th>
+                        <th>Cargo</th>
+                        <th>Departamento</th>
+                        <th>Status</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for func in funcionarios %}
+                    <tr>
+                        <td>{{ func.nome }}</td>
+                        <td>{{ func.cpf }}</td>
+                        <td>{{ func.cargo.nome if func.cargo else 'N/D' }}</td>
+                        <td>{{ func.departamento.nome if func.departamento else 'N/D' }}</td>
+                        <td>
+                            {% if func.status == 'ativo' %}
+                                <span class="badge bg-success">Ativo</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('rh.ver_funcionario', id=func.id) }}" class="btn btn-sm btn-outline-primary" title="Ver Perfil">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{{ url_for('rh.editar_funcionario', id=func.id) }}" class="btn btn-sm btn-outline-secondary" title="Editar Funcionário">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center">Nenhum funcionário cadastrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-    const createCurrencyMask = (id) => {
-        const element = document.getElementById(id);
-        if(element) {
-            IMask(element, {
-                mask: 'R$ num',
-                blocks: {
-                    num: {
-                        mask: Number,
-                        scale: 2,
-                        thousandsSeparator: '.',
-                        padFractionalZeros: true,
-                        radix: ',',
-                        mapToRadix: ['.']
-                    }
-                }
-            });
-        }
-    };
-
-    createCurrencyMask('salario');
-    createCurrencyMask('vale_transporte');
-    createCurrencyMask('vale_alimentacao');
-    createCurrencyMask('vale_refeicao');
-
-    const setupBenefitToggle = (checkboxId, detailsId) => {
-        const checkbox = document.getElementById(checkboxId);
-        const detailsDiv = document.getElementById(detailsId);
-        if(checkbox && detailsDiv) {
-            checkbox.addEventListener('change', function() {
-                if (this.checked) {
-                    detailsDiv.classList.remove('d-none');
-                } else {
-                    detailsDiv.classList.add('d-none');
-                }
-            });
-        }
-    };
-
-    setupBenefitToggle('recebe_vt', 'vt_details');
-    setupBenefitToggle('recebe_va', 'va_details');
-    setupBenefitToggle('recebe_vr', 'vr_details');
-});
-</script>
+<div class="modal fade" id="importModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Importar Funcionários via Excel</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="{{ url_for('rh.importar_funcionarios') }}" method="POST" enctype="multipart/form-data">
+        <div class="modal-body">
+            <p>Selecione um ficheiro <code>.xlsx</code> seguindo o modelo. Campos como cargo e departamento já devem existir no sistema.</p>
+            <input type="file" name="excel_file" class="form-control" required accept=".xlsx">
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Enviar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
