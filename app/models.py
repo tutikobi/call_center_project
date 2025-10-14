@@ -218,3 +218,28 @@ class Notificacao(BaseModel):
     remetente_nome = db.Column(db.String(100))
     mensagem = db.Column(db.Text, nullable=False)
     lida = db.Column(db.Boolean, default=False)
+    # ... (todo o seu código existente do models.py) ...
+
+# --- NOVOS MODELS DE PRODUTIVIDADE (ADICIONAR NO FINAL) ---
+from sqlalchemy.dialects.postgresql import JSONB
+
+class ActivityLog(BaseModel):
+    __tablename__ = 'activity_log'
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    window_title = db.Column(db.String(512))
+    process_name = db.Column(db.String(255))
+    url = db.Column(db.String(1024))
+    is_productive = db.Column(db.Boolean)
+    category = db.Column(db.String(100))
+    ai_analysis = db.Column(JSONB)
+    usuario = db.relationship('Usuario', backref=db.backref('activity_logs', lazy=True, cascade="all, delete-orphan"))
+
+class ProductivityRules(BaseModel):
+    __tablename__ = 'productivity_rules'
+    empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False, unique=True)
+    process_rules = db.Column(JSONB, default=lambda: [])
+    url_rules = db.Column(JSONB, default=lambda: [])
+    custom_ai_prompt = db.Column(db.Text)
+    empresa = db.relationship('Empresa', backref=db.backref('productivity_rules', uselist=False, cascade="all, delete-orphan"))

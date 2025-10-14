@@ -333,3 +333,39 @@ def definir_assunto_conversa(conversa_id):
     socketio.emit('atualizar_dashboard')
     
     return jsonify({'status': 'ok', 'message': f'Assunto da conversa alterado para {novo_assunto}.'})
+# ... (todo o seu código existente do api.py) ...
+
+# --- NOVAS ROTAS DE PRODUTIVIDADE (ADICIONAR NO FINAL) ---
+from app.decorators import agent_api_key_required
+from app.models import ActivityLog, ProductivityRules
+from app.services.ai_productivity_service import ai_productivity_service
+from app.services.realtime_service import notify_dashboard_update
+from flask import g
+
+@bp.route('/productivity/log', methods=['POST'])
+@agent_api_key_required
+def log_activity():
+    data = request.json; agent_user = g.current_user
+    rules = ProductivityRules.query.filter_by(empresa_id=agent_user.empresa_id).first()
+    rules_dict = {"process_rules": rules.process_rules if rules else [], "url_rules": rules.url_rules if rules else [], "custom_ai_prompt": rules.custom_ai_prompt if rules else None}
+    analysis = ai_productivity_service.analyze_activity(data, rules_dict)
+    new_log = ActivityLog(usuario_id=agent_user.id, empresa_id=agent_user.empresa_id, timestamp=datetime.fromisoformat(data['timestamp']), window_title=data.get('window_title'), process_name=data.get('process_name'), url=data.get('url'), is_productive=analysis.get('is_productive'), category=analysis.get('category'), ai_analysis=analysis)
+    db.session.add(new_log); db.session.commit()
+    realtime_data = { "usuario_id": agent_user.id, "usuario_nome": agent_user.nome, **analysis }
+    notify_dashboard_update(agent_user.empresa_id, realtime_data)
+    return jsonify({"status": "success"}), 201
+
+@bp.route('/productivity/rules', methods=['GET', 'POST'])
+@login_required
+def manage_rules():
+    if current_user.role != 'admin_empresa': return jsonify({"error": "Acesso não autorizado."}), 403
+    rules = ProductivityRules.query.filter_by(empresa_id=current_user.empresa_id).first()
+    if not rules: rules = ProductivityRules(empresa_id=current_user.empresa_id); db.session.add(rules)
+    if request.method == 'POST':
+        data = request.json
+        rules.process_rules = data.get('process_rules', [])
+        rules.url_rules = data.get('url_rules', [])
+        rules.custom_ai_prompt = data.get('custom_ai_prompt')
+        db.session.commit()
+        return jsonify({"message": "Regras atualizadas."})
+    return jsonify({"process_rules": rules.process_rules or [], "url_rules": rules.url_rules or [], "custom_ai_prompt": rules.custom_ai_prompt or ""})

@@ -1,0 +1,5 @@
+{
+    "SERVER_URL": "http://127.0.0.1:5000/api/productivity/log",
+    "API_KEY": "admin@sistemacallcenter.com",
+    "LOG_INTERVAL_SECONDS": 15
+}
