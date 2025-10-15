@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">{{ page_title }}</h1>
+    <a href="{{ url_for('routes.productivity_monitoring') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i> Voltar ao Monitoramento
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data/Hora</th>
+                        <th>Atividade Principal (URL/Título)</th>
+                        <th>Programa</th>
+                        <th>Classificação</th>
+                        <th>Categoria</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                        <td class="text-truncate" style="max-width: 300px;" title="{{ log.url or log.window_title }}">
+                            {{ log.url or log.window_title }}
+                        </td>
+                        <td>{{ log.process_name }}</td>
+                        <td>
+                            {% if log.is_productive == True %}
+                                <span class="badge bg-primary">Produtivo</span>
+                            {% elif log.is_productive == False %}
+                                <span class="badge bg-danger">Improdutivo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Neutro</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.category }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted p-4">
+                            Nenhum registro de atividade encontrado para este agente.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -3,6 +3,15 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
+{% if current_user.role in ['agente', 'admin_empresa'] %}
+<div class="alert alert-info d-flex justify-content-between align-items-center">
+    <span>Monitore sua produtividade! Vincule o agente de desktop para começar.</span>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#linkAgentModal">
+        <i class="fas fa-link me-2"></i>Vincular Agente de Desktop
+    </button>
+</div>
+{% endif %}
+
 <h1 class="h2 mb-4">Dashboard Unificado - Chamadas & WhatsApp</h1>
 
 <div class="row">
@@ -95,12 +104,47 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="linkAgentModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Vincular Agente de Desktop</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="initial-step">
+                    <p>Para começar o monitoramento, clique no botão abaixo para gerar um token de vínculo.</p>
+                    <div class="text-center">
+                        <button class="btn btn-success" id="generate-token-btn">Gerar Token de Vínculo</button>
+                    </div>
+                </div>
+
+                <div id="token-step" style="display: none;">
+                    <p>Token gerado! Agora, clique no botão abaixo para abrir e vincular o agente de monitoramento.</p>
+                    <div class="text-center my-3">
+                        <a href="#" id="link-agent-btn" class="btn btn-primary btn-lg">
+                            <i class="fas fa-rocket me-2"></i> Abrir e Vincular Agente
+                        </a>
+                    </div>
+                    <hr>
+                    <p class="text-muted small">
+                        <strong>Primeira vez aqui?</strong> Se o botão acima não funcionar, significa que o programa de monitoramento não está instalado.
+                        <a href="#">Faça o download do instalador aqui</a> e execute-o. Depois, tente novamente.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+// --- Script do Dashboard (Gráficos) ---
 document.addEventListener('DOMContentLoaded', function () {
     const renderChart = (ctx, type, labels, data, chartLabel) => {
+        // ... (código do gráfico, sem alteração) ...
         const canvas = ctx.canvas;
         if (!data || data.length === 0) {
             canvas.parentElement.innerHTML = '<p class="text-center text-muted mt-5 pt-5">Não há dados para exibir este gráfico.</p>';
@@ -145,12 +189,45 @@ document.addEventListener('DOMContentLoaded', function () {
             if (ctxCsatAgente && data.graficoCsatAgente) {
                 renderChart(ctxCsatAgente.getContext('2d'), 'bar', data.graficoCsatAgente.labels, data.graficoCsatAgente.data, 'CSAT Médio');
             }
-        })
-        .catch(error => {
-            console.error('Erro ao buscar dados para os gráficos:', error);
-            document.getElementById('graficoCanais').parentElement.innerHTML = '<p class="text-center text-danger mt-5">Erro ao carregar gráfico.</p>';
-            document.getElementById('graficoCsatAgente').parentElement.innerHTML = '<p class="text-center text-danger mt-5">Erro ao carregar gráfico.</p>';
         });
+
+    // --- Lógica para o Modal de Vínculo ---
+    const generateBtn = document.getElementById('generate-token-btn');
+    const initialStep = document.getElementById('initial-step');
+    const tokenStep = document.getElementById('token-step');
+    const linkAgentBtn = document.getElementById('link-agent-btn');
+
+    generateBtn.addEventListener('click', async () => {
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Gerando...';
+
+        try {
+            const response = await fetch("{{ url_for('routes.generate_desktop_token') }}", { method: 'POST' });
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                // Monta o link com o protocolo personalizado
+                linkAgentBtn.href = `callcenteragent:?token=${data.token}`;
+                initialStep.style.display = 'none';
+                tokenStep.style.display = 'block';
+            } else {
+                alert('Erro ao gerar token: ' + data.message);
+            }
+        } catch (error) {
+            alert('Erro de conexão ao gerar o token.');
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = 'Gerar Token de Vínculo';
+        }
+    });
+
+    const linkAgentModal = document.getElementById('linkAgentModal');
+    linkAgentModal.addEventListener('hidden.bs.modal', () => {
+        initialStep.style.display = 'block';
+        tokenStep.style.display = 'none';
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = 'Gerar Token de Vínculo';
+        linkAgentBtn.href = '#';
+    });
 });
 </script>
 {% endblock %}

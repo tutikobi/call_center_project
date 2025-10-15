@@ -1,13 +1,15 @@
 # call_center_project/app/routes.py
 
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify, flash
-from .models import db, Avaliacao, ConversaWhatsApp, Usuario, Notificacao, Email
+from .models import db, Avaliacao, ConversaWhatsApp, Usuario, Notificacao, Email, ActivityLog
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from datetime import datetime, date, timedelta
+from .decorators import require_plan
 
 bp = Blueprint('routes', __name__)
 
+# ... (código existente das rotas, sem alterações, até o final do arquivo) ...
 @bp.route("/")
 def index():
     if current_user.is_authenticated:
@@ -304,7 +306,6 @@ def whatsapp_dashboard():
     
     return render_template("whatsapp_dashboard.html")
 
-# --- NOVA ROTA PARA A PÁGINA DE DETALHES DE PRODUTIVIDADE DO AGENTE ---
 @bp.route("/produtividade/agente/<int:agente_id>")
 @login_required
 def produtividade_agente(agente_id):
@@ -318,3 +319,53 @@ def produtividade_agente(agente_id):
         return redirect(url_for('routes.whatsapp_dashboard'))
 
     return render_template("produtividade_agente.html", agente=agente)
+
+@bp.route("/productivity/monitoring")
+@login_required
+@require_plan('completo')
+def productivity_monitoring():
+    if current_user.role != 'admin_empresa':
+        flash("Acesso não permitido.", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    agents = Usuario.query.filter(
+        Usuario.empresa_id == current_user.empresa_id,
+        Usuario.role.in_(['agente', 'admin_empresa'])
+    ).order_by(Usuario.nome).all()
+
+    return render_template("productivity_monitoring.html", agents=agents, page_title="Monitoramento de Agentes")
+
+@bp.route("/productivity/agent/<int:agente_id>/log")
+@login_required
+@require_plan('completo')
+def productivity_agent_log(agente_id):
+    if current_user.role != 'admin_empresa':
+        flash("Acesso não permitido.", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    agente = Usuario.query.get_or_404(agente_id)
+    if agente.empresa_id != current_user.empresa_id:
+        flash("Agente não encontrado.", "danger")
+        return redirect(url_for('routes.productivity_monitoring'))
+
+    logs = ActivityLog.query.filter_by(
+        usuario_id=agente.id
+    ).order_by(ActivityLog.timestamp.desc()).all()
+
+    return render_template(
+        "productivity_log.html",
+        agente=agente,
+        logs=logs,
+        page_title=f"Histórico de Atividade de {agente.nome}"
+    )
+
+# --- NOVA ROTA PARA GERAR O TOKEN ---
+@bp.route('/desktop_agent/generate_token', methods=['POST'])
+@login_required
+def generate_desktop_token():
+    # Apenas agentes e admins da empresa podem gerar tokens
+    if current_user.role not in ['agente', 'admin_empresa']:
+        return jsonify({'status': 'error', 'message': 'Acesso negado.'}), 403
+
+    token = current_user.generate_desktop_token()
+    return jsonify({'status': 'success', 'token': token})

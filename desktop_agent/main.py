@@ -1,64 +1,125 @@
 # call_center_project/desktop_agent/main.py
+
 import sys
 import time
 import requests
 from datetime import datetime
 import platform
 import json
+import os
+import tkinter as tk
+from tkinter import simpledialog, messagebox
+from urllib.parse import urlparse, parse_qs
 
 CONFIG_FILE = 'agent_config.json'
+SERVER_URL_BASE = "http://127.0.0.1:5000"
+
+def get_token_from_args():
+    """Verifica se um token foi passado como argumento de linha de comando."""
+    if len(sys.argv) > 1:
+        # O argumento será algo como "callcenteragent:?token=..."
+        url = sys.argv[1]
+        parsed_url = urlparse(url)
+        query_params = parse_qs(parsed_url.query)
+        return query_params.get('token', [None])[0]
+    return None
 
 def load_config():
-    """Carrega as configurações de um arquivo JSON."""
     try:
-        with open(CONFIG_FILE, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        print(f"ERRO: Arquivo de configuração '{CONFIG_FILE}' não encontrado.")
-        print("Por favor, crie o arquivo com o seguinte conteúdo e preencha seus dados:")
-        print('{\n    "SERVER_URL": "http://127.0.0.1:5000/api/productivity/log",\n    "API_KEY": "seu-email@suaempresa.com",\n    "LOG_INTERVAL_SECONDS": 15\n}')
-        sys.exit(1)
-    except json.JSONDecodeError:
-        print(f"Erro ao ler o arquivo de configuração '{CONFIG_FILE}'. Verifique se é um JSON válido.")
-        sys.exit(1)
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+                return config.get("API_KEY")
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+    return None
 
-config = load_config()
-SERVER_URL = config.get("SERVER_URL")
-API_KEY = config.get("API_KEY")
-LOG_INTERVAL_SECONDS = config.get("LOG_INTERVAL_SECONDS", 15)
+def save_config(api_key):
+    config = {
+        "SERVER_URL": f"{SERVER_URL_BASE}/api/productivity/log",
+        "API_KEY": api_key,
+        "LOG_INTERVAL_SECONDS": 15
+    }
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
+
+def link_agent(token=None):
+    """Vincula o agente usando um token (via GUI ou argumento)."""
+    root = tk.Tk()
+    root.withdraw()
+
+    if not token:
+        token = simpledialog.askstring("Vincular Agente", "Por favor, cole o token gerado no seu dashboard web:", parent=root)
+    
+    if not token:
+        if not get_token_from_args(): # Só mostra erro se não foi via link
+            messagebox.showerror("Erro", "O processo foi cancelado. O token é necessário.")
+        return None
+
+    try:
+        response = requests.post(f"{SERVER_URL_BASE}/api/desktop_agent/link", json={"token": token}, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            api_key = data.get('api_key')
+            save_config(api_key)
+            messagebox.showinfo("Sucesso", f"Agente vinculado com sucesso!\nO monitoramento será iniciado em segundo plano.")
+            return api_key
+        else:
+            messagebox.showerror("Erro de Vinculação", f"Token inválido ou expirado: {response.json().get('message')}")
+            return None
+    except requests.exceptions.RequestException as e:
+        messagebox.showerror("Erro de Conexão", f"Não foi possível conectar ao servidor: {e}")
+        return None
 
 if platform.system() == "Windows":
     try:
         from monitors.windows_monitor import get_active_window_info
     except ImportError:
-        print("Erro: Bibliotecas para monitoramento do Windows não encontradas.")
-        print("Por favor, instale-as com: pip install psutil pywin32 uiautomation")
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showerror("Erro de Dependência", "Bibliotecas para monitoramento não encontradas. Contate o suporte.")
         sys.exit(1)
 else:
-    print(f"Sistema operacional {platform.system()} ainda não é suportado.")
+    root = tk.Tk()
+    root.withdraw()
+    messagebox.showerror("Erro de Compatibilidade", f"Sistema operacional {platform.system()} não é suportado.")
     sys.exit(1)
 
-def send_log(activity_data):
-    headers = {'Content-Type': 'application/json', 'X-API-KEY': API_KEY}
+def send_log(activity_data, api_key):
+    headers = {'Content-Type': 'application/json', 'X-API-KEY': api_key}
     try:
-        response = requests.post(SERVER_URL, json=activity_data, headers=headers, timeout=10)
-        if response.status_code == 201:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] Log enviado: {activity_data.get('process_name')}")
-        else:
-            print(f"ERRO ao enviar log: {response.status_code} - {response.text}")
-    except requests.exceptions.RequestException as e:
-        print(f"ERRO de conexão com o servidor: {e}")
+        url = f"{SERVER_URL_BASE}/api/productivity/log"
+        requests.post(url, json=activity_data, headers=headers, timeout=10)
+    except requests.exceptions.RequestException:
+        pass
 
 def main():
-    print("================================================")
-    print("  Agente de Monitoramento de Produtividade")
-    print("================================================")
-    print(f"Servidor: {SERVER_URL}")
-    print(f"Agente: {API_KEY}")
-    print(f"Intervalo: {LOG_INTERVAL_SECONDS} segundos")
-    print("Pressione Ctrl+C para encerrar.")
-    print("------------------------------------------------")
+    # Evita que múltiplas instâncias rodem
+    try:
+        import win32event, win32api, winerror
+        mutex_name = "CallCenterAgentMutex_some_unique_string"
+        mutex = win32event.CreateMutex(None, 1, mutex_name)
+        if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showinfo("Informação", "O agente de monitoramento já está em execução.")
+            sys.exit(0)
+    except ImportError:
+        pass # Ignora se pywin32 não estiver instalado
 
+    api_key = load_config()
+    token_from_arg = get_token_from_args()
+
+    # Se recebeu um token via link, força a revinculação
+    if token_from_arg:
+        api_key = link_agent(token=token_from_arg)
+    # Se não tem config, pede para vincular
+    elif not api_key:
+        api_key = link_agent()
+
+    if not api_key:
+        sys.exit(1)
+    
     while True:
         try:
             info = get_active_window_info()
@@ -69,19 +130,10 @@ def main():
                     "process_name": info.get("process"),
                     "url": info.get("url")
                 }
-                send_log(log_data)
-
-            time.sleep(LOG_INTERVAL_SECONDS)
-        except KeyboardInterrupt:
-            # Esta é a parte que foi corrigida
-            print("\nAgente encerrado pelo usuário.")
-            break
-        except Exception as e:
-            print(f"Ocorreu um erro inesperado no loop principal: {e}")
-            time.sleep(LOG_INTERVAL_SECONDS * 2)
+                send_log(log_data, api_key)
+            time.sleep(15)
+        except Exception:
+            time.sleep(30)
 
 if __name__ == "__main__":
-    if not all([SERVER_URL, API_KEY]):
-        print("ERRO: 'SERVER_URL' e 'API_KEY' devem estar definidos em agent_config.json.")
-    else:
-        main()
+    main()

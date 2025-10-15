@@ -9,8 +9,6 @@ def require_plan(plan_level):
     """
     Decorador que restringe o acesso a rotas com base no plano da empresa.
     """
-    # --- CORREÇÃO APLICADA AQUI ---
-    # A estrutura correta de um decorador com argumentos precisa de uma função extra.
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
@@ -22,10 +20,14 @@ def require_plan(plan_level):
 
             empresa_plano = current_user.empresa.plano
             
+            # --- CORREÇÃO APLICADA AQUI ---
+            # Adicionado o plano 'pro' à hierarquia para que a verificação funcione corretamente.
             plan_hierarchy = {
                 'basico': 1,
                 'medio': 2,
-                'completo': 3
+                'pro': 3,
+                'completo': 3,
+                'customizado': 4
             }
 
             if plan_hierarchy.get(empresa_plano, 0) < plan_hierarchy.get(plan_level, 99):
@@ -51,4 +53,3 @@ def agent_api_key_required(f):
         g.current_user = user 
         return f(*args, **kwargs)
     return decorated_function
-

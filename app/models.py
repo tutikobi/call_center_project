@@ -1,11 +1,12 @@
 # call_center_project/app/models.py
 
 from . import db
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+import secrets
 
-# Classe base para adicionar campos de timestamp automaticamente
+# ... (código existente da BaseModel e Empresa) ...
 class BaseModel(db.Model):
     __abstract__ = True
     id = db.Column(db.Integer, primary_key=True)
@@ -107,6 +108,10 @@ class Usuario(UserMixin, BaseModel):
     foto_perfil = db.Column(db.String(255))
     telefone = db.Column(db.String(20))
     cargo = db.Column(db.String(50))
+
+    # --- NOVOS CAMPOS PARA VINCULAÇÃO DO AGENTE DE DESKTOP ---
+    desktop_login_token = db.Column(db.String(64), unique=True, nullable=True)
+    desktop_token_expiration = db.Column(db.DateTime, nullable=True)
     
     avaliacoes = db.relationship('Avaliacao', backref='agente', lazy=True)
     conversas_atribuidas = db.relationship('ConversaWhatsApp', backref='agente_atribuido', lazy=True, foreign_keys='ConversaWhatsApp.agente_atribuido_id')
@@ -127,6 +132,20 @@ class Usuario(UserMixin, BaseModel):
         self.ultimo_login = datetime.utcnow()
         db.session.commit()
 
+    # --- NOVOS MÉTODOS PARA GERAR E VALIDAR O TOKEN ---
+    def generate_desktop_token(self):
+        self.desktop_login_token = secrets.token_hex(32)
+        self.desktop_token_expiration = datetime.utcnow() + timedelta(minutes=5) # Token válido por 5 minutos
+        db.session.commit()
+        return self.desktop_login_token
+
+    def is_desktop_token_valid(self, token):
+        return (
+            self.desktop_login_token == token and
+            self.desktop_token_expiration > datetime.utcnow()
+        )
+
+# ... (resto do arquivo models.py sem alterações) ...
 class LogAuditoria(BaseModel):
     __tablename__ = 'log_auditoria'
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
@@ -218,9 +237,7 @@ class Notificacao(BaseModel):
     remetente_nome = db.Column(db.String(100))
     mensagem = db.Column(db.Text, nullable=False)
     lida = db.Column(db.Boolean, default=False)
-    # ... (todo o seu código existente do models.py) ...
 
-# --- NOVOS MODELS DE PRODUTIVIDADE (ADICIONAR NO FINAL) ---
 from sqlalchemy.dialects.postgresql import JSONB
 
 class ActivityLog(BaseModel):

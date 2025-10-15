@@ -44,6 +44,9 @@
             {% endif %}
             {% if current_user.role == 'admin_empresa' %}
                 <hr class="sidebar-divider">
+                <a class="nav-link {% if request.endpoint == 'routes.productivity_monitoring' %}active{% endif %}" href="{{ url_for('routes.productivity_monitoring') }}">
+                    <i class="fas fa-desktop fa-fw me-2"></i> Monitoramento
+                </a>
                 <a class="nav-link {% if request.endpoint.startswith('management.') and 'configuracoes' not in request.endpoint %}active{% endif %}" href="{{ url_for('management.listar_usuarios') }}">
                     <i class="fas fa-users-cog fa-fw me-2"></i> Gerenciar Usuários
                 </a>

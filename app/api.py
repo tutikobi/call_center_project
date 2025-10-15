@@ -5,7 +5,7 @@ from .models import db, Avaliacao, ConversaWhatsApp, MensagemWhatsApp, Empresa, 
 from app.models_rh import Funcionario, Departamento
 from app.rh.calculos import calcular_folha_pagamento
 from flask_login import login_required, current_user
-from datetime import datetime, time
+from datetime import datetime
 from sqlalchemy import func, cast, Date, desc
 import requests
 import json
@@ -14,8 +14,35 @@ from . import socketio
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
-# --- ROTAS PARA O CHAT DE WHATSAPP ---
+# --- ROTA DE VINCULAÇÃO PARA O AGENTE DE DESKTOP ---
+@bp.route('/desktop_agent/link', methods=['POST'])
+def desktop_agent_link():
+    token = request.json.get('token')
+    if not token:
+        return jsonify({"status": "error", "message": "Token não fornecido."}), 400
 
+    # Busca o usuário pelo token e verifica se ele não expirou
+    user = Usuario.query.filter_by(desktop_login_token=token).first()
+
+    if user and user.is_desktop_token_valid(token):
+        # Invalida o token após o uso
+        user.desktop_login_token = None
+        user.desktop_token_expiration = None
+        db.session.commit()
+        
+        return jsonify({
+            "status": "success",
+            "message": "Agente vinculado com sucesso.",
+            "api_key": user.email  # Retorna o email para ser salvo como API Key
+        }), 200
+    
+    return jsonify({"status": "error", "message": "Token inválido ou expirado."}), 401
+
+
+# --- ROTA ANTIGA DE LOGIN REMOVIDA ---
+# A rota /desktop_agent/login foi substituída pela /link
+
+# ... (resto do arquivo api.py sem alterações) ...
 @bp.route('/conversa/<int:conversa_id>')
 @login_required
 def get_conversa(conversa_id):
@@ -345,13 +372,21 @@ from flask import g
 @bp.route('/productivity/log', methods=['POST'])
 @agent_api_key_required
 def log_activity():
-    data = request.json; agent_user = g.current_user
+    data = request.json
+    agent_user = g.current_user
     rules = ProductivityRules.query.filter_by(empresa_id=agent_user.empresa_id).first()
     rules_dict = {"process_rules": rules.process_rules if rules else [], "url_rules": rules.url_rules if rules else [], "custom_ai_prompt": rules.custom_ai_prompt if rules else None}
     analysis = ai_productivity_service.analyze_activity(data, rules_dict)
     new_log = ActivityLog(usuario_id=agent_user.id, empresa_id=agent_user.empresa_id, timestamp=datetime.fromisoformat(data['timestamp']), window_title=data.get('window_title'), process_name=data.get('process_name'), url=data.get('url'), is_productive=analysis.get('is_productive'), category=analysis.get('category'), ai_analysis=analysis)
-    db.session.add(new_log); db.session.commit()
-    realtime_data = { "usuario_id": agent_user.id, "usuario_nome": agent_user.nome, **analysis }
+    db.session.add(new_log)
+    db.session.commit()
+    
+    realtime_data = {
+        "usuario_id": agent_user.id,
+        "usuario_nome": agent_user.nome,
+        **data,
+        **analysis
+    }
     notify_dashboard_update(agent_user.empresa_id, realtime_data)
     return jsonify({"status": "success"}), 201
 
