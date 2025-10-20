@@ -1,16 +1,22 @@
 # call_center_project/app/api.py
 
-from flask import Blueprint, request, jsonify, current_app
-from .models import db, Avaliacao, ConversaWhatsApp, MensagemWhatsApp, Empresa, Usuario
+from flask import Blueprint, request, jsonify, current_app, g
+from .models import db, Avaliacao, ConversaWhatsApp, MensagemWhatsApp, Empresa, Usuario, ActivityLog, ProductivityRules
 from app.models_rh import Funcionario, Departamento
 from app.rh.calculos import calcular_folha_pagamento
 from flask_login import login_required, current_user
-from datetime import datetime
+from datetime import datetime, time, date, timedelta
 from sqlalchemy import func, cast, Date, desc
 import requests
 import json
 from .admin import admin_required
 from . import socketio
+# --- Importações para a nova lógica de status e monitoramento ---
+from .decorators import agent_api_key_required
+from app.services.ai_productivity_service import ai_productivity_service
+from app.services.realtime_service import notify_dashboard_update
+from .socket_events import update_desktop_agent_status
+
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -38,11 +44,6 @@ def desktop_agent_link():
     
     return jsonify({"status": "error", "message": "Token inválido ou expirado."}), 401
 
-
-# --- ROTA ANTIGA DE LOGIN REMOVIDA ---
-# A rota /desktop_agent/login foi substituída pela /link
-
-# ... (resto do arquivo api.py sem alterações) ...
 @bp.route('/conversa/<int:conversa_id>')
 @login_required
 def get_conversa(conversa_id):
@@ -360,24 +361,31 @@ def definir_assunto_conversa(conversa_id):
     socketio.emit('atualizar_dashboard')
     
     return jsonify({'status': 'ok', 'message': f'Assunto da conversa alterado para {novo_assunto}.'})
-# ... (todo o seu código existente do api.py) ...
-
-# --- NOVAS ROTAS DE PRODUTIVIDADE (ADICIONAR NO FINAL) ---
-from app.decorators import agent_api_key_required
-from app.models import ActivityLog, ProductivityRules
-from app.services.ai_productivity_service import ai_productivity_service
-from app.services.realtime_service import notify_dashboard_update
-from flask import g
 
 @bp.route('/productivity/log', methods=['POST'])
 @agent_api_key_required
 def log_activity():
     data = request.json
     agent_user = g.current_user
+    
+    if not data or 'timestamp' not in data:
+        return jsonify({"status": "error", "message": "Dados inválidos."}), 400
+
     rules = ProductivityRules.query.filter_by(empresa_id=agent_user.empresa_id).first()
     rules_dict = {"process_rules": rules.process_rules if rules else [], "url_rules": rules.url_rules if rules else [], "custom_ai_prompt": rules.custom_ai_prompt if rules else None}
     analysis = ai_productivity_service.analyze_activity(data, rules_dict)
-    new_log = ActivityLog(usuario_id=agent_user.id, empresa_id=agent_user.empresa_id, timestamp=datetime.fromisoformat(data['timestamp']), window_title=data.get('window_title'), process_name=data.get('process_name'), url=data.get('url'), is_productive=analysis.get('is_productive'), category=analysis.get('category'), ai_analysis=analysis)
+    
+    new_log = ActivityLog(
+        usuario_id=agent_user.id, 
+        empresa_id=agent_user.empresa_id, 
+        timestamp=datetime.fromisoformat(data['timestamp']), 
+        window_title=data.get('window_title'), 
+        process_name=data.get('process_name'), 
+        url=data.get('url'), 
+        is_productive=analysis.get('is_productive'), 
+        category=analysis.get('category'), 
+        ai_analysis=analysis
+    )
     db.session.add(new_log)
     db.session.commit()
     
@@ -388,7 +396,11 @@ def log_activity():
         **analysis
     }
     notify_dashboard_update(agent_user.empresa_id, realtime_data)
-    return jsonify({"status": "success"}), 201
+    
+    # Notifica sobre o STATUS (confirma que o desktop está enviando dados)
+    update_desktop_agent_status(agent_user.id, True)
+
+    return jsonify({"status": "success", "message": "Log recebido."}), 201
 
 @bp.route('/productivity/rules', methods=['GET', 'POST'])
 @login_required

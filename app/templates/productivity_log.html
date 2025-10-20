@@ -10,11 +10,31 @@
     </a>
 </div>
 
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('routes.productivity_agent_log', agente_id=agente.id) }}">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="start_date" class="form-label">Data Início</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="end_date" class="form-label">Data Fim</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter me-2"></i>Filtrar Período
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 <div class="card">
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-striped table-hover">
-                <thead class="table-light">
+            <table class="table table-striped table-hover table-sm"> <thead class="table-light">
                     <tr>
                         <th>Data/Hora</th>
                         <th>Atividade Principal (URL/Título)</th>
@@ -36,8 +56,10 @@
                                 <span class="badge bg-primary">Produtivo</span>
                             {% elif log.is_productive == False %}
                                 <span class="badge bg-danger">Improdutivo</span>
-                            {% else %}
+                            {% elif log.is_productive == None %}
                                 <span class="badge bg-secondary">Neutro</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Erro IA</span>
                             {% endif %}
                         </td>
                         <td>{{ log.category }}</td>
@@ -45,7 +67,7 @@
                     {% else %}
                     <tr>
                         <td colspan="5" class="text-center text-muted p-4">
-                            Nenhum registro de atividade encontrado para este agente.
+                            Nenhum registro de atividade encontrado para este agente{% if start_date == end_date and start_date == today_str %} hoje{% elif start_date or end_date %} no período selecionado{% endif %}.
                         </td>
                     </tr>
                     {% endfor %}

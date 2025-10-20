@@ -1,0 +1,15 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\callcenteragent]
+@="URL:Call Center Agent Protocol"
+"URL Protocol"=""
+
+[HKEY_CLASSES_ROOT\callcenteragent\DefaultIcon]
+@="C:\\Program Files (x86)\\CallCenterAgent\\AgenteDeMonitoramento.exe,1"
+
+[HKEY_CLASSES_ROOT\callcenteragent\shell]
+
+[HKEY_CLASSES_ROOT\callcenteragent\shell\open]
+
+[HKEY_CLASSES_ROOT\callcenteragent\shell\open\command]
+@="\"C:\\Program Files (x86)\\CallCenterAgent\\AgenteDeMonitoramento.exe\" \"%1\""

@@ -16,22 +16,25 @@
         <div class="card h-100 agent-monitor-card" id="agent-card-{{ agent.id }}" data-agent-id="{{ agent.id }}">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0">{{ agent.nome }}</h6>
-                <span class="badge bg-secondary" id="agent-status-{{ agent.id }}">Offline</span>
+                <span class="badge bg-secondary" id="agent-status-{{ agent.id }}">Carregando...</span>
             </div>
             <div class="card-body">
                 <p class="text-muted mb-2">
-                    <i class="fas fa-clock me-2"></i>Inativo há: 
-                    <strong id="agent-inactive-time-{{ agent.id }}">00:00:00</strong>
+                    <i class="fas fa-desktop me-1"></i> Monitorando: <strong id="agent-monitoring-status-{{ agent.id }}">Não</strong>
+                </p>
+                <p class="text-muted mb-2">
+                    <i class="fas fa-clock me-2"></i>Última Atividade:
+                    <strong id="agent-last-activity-{{ agent.id }}">Nunca</strong>
                 </p>
                 <p class="mb-1">
                     <i class="fas fa-window-maximize me-2"></i>
                     <strong class="d-block">Atividade Atual:</strong>
-                    <span id="agent-activity-{{ agent.id }}" class="text-truncate d-block">Nenhuma atividade registrada.</span>
+                    <span id="agent-activity-{{ agent.id }}" class="text-truncate d-block">-</span>
                 </p>
                 <p class="mb-1">
                     <i class="fas fa-cogs me-2"></i>
                     <strong class="d-block">Software/Site:</strong>
-                    <span id="agent-process-{{ agent.id }}">N/A</span>
+                    <span id="agent-process-{{ agent.id }}">-</span>
                 </p>
             </div>
             <div class="card-footer d-flex justify-content-between align-items-center">
@@ -52,132 +55,226 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
-    const agentsData = {};
+    const agentsData = {}; // Guarda o estado local {agentId: {is_online_web: bool, is_monitoring: bool, last_desktop_update: Date|null, monitoring_timeout: Timer|null}}
     const agentsGrid = document.getElementById('agents-grid');
+    const MONITORING_TIMEOUT_SECONDS = 90; // Tempo sem dados do desktop para considerar "Sem Monitoramento"
 
-    // --- FUNÇÃO PARA ADICIONAR UM NOVO CARD DE AGENTE ---
-    function addAgentCard(agent) {
-        // Remove a mensagem "Nenhum agente" se ela existir
-        const noAgentsMessage = document.getElementById('no-agents-message');
-        if (noAgentsMessage) {
-            noAgentsMessage.remove();
+    // Função para formatar "tempo desde"
+    function formatTimeAgo(isoString) {
+        if (!isoString) return "Nunca";
+        const date = new Date(isoString);
+        const seconds = Math.floor((new Date() - date) / 1000);
+
+        if (isNaN(seconds) || seconds < 0) return "Agora"; // Evita tempos negativos
+
+        let interval = Math.floor(seconds / 31536000);
+        if (interval >= 1) return `há ${interval} ano${interval > 1 ? 's' : ''}`;
+        interval = Math.floor(seconds / 2592000);
+        if (interval >= 1) return `há ${interval} mês${interval > 1 ? 'es' : ''}`;
+        interval = Math.floor(seconds / 86400);
+        if (interval >= 1) return `há ${interval} dia${interval > 1 ? 's' : ''}`;
+        interval = Math.floor(seconds / 3600);
+        if (interval >= 1) return `há ${interval} hora${interval > 1 ? 's' : ''}`;
+        interval = Math.floor(seconds / 60);
+        if (interval >= 1) return `há ${interval} minuto${interval > 1 ? 's' : ''}`;
+        return `há ${Math.floor(seconds)} segundos`;
+    }
+
+    // Função para atualizar a UI de um card específico
+    function updateAgentCardUI(agentId) {
+        const agentState = agentsData[agentId];
+        if (!agentState) {
+            console.warn(`Tentativa de atualizar UI para agente ${agentId} que não existe.`);
+            return;
         }
 
-        // Cria o HTML para o novo card
+        const statusEl = document.getElementById(`agent-status-${agentId}`);
+        const monitoringStatusEl = document.getElementById(`agent-monitoring-status-${agentId}`);
+        const lastActivityEl = document.getElementById(`agent-last-activity-${agentId}`);
+        const activityEl = document.getElementById(`agent-activity-${agentId}`);
+        const processEl = document.getElementById(`agent-process-${agentId}`);
+        const categoryEl = document.getElementById(`agent-category-${agentId}`);
+
+        // Garante que todos os elementos existem antes de tentar atualizá-los
+        if (!statusEl || !monitoringStatusEl || !lastActivityEl || !activityEl || !processEl || !categoryEl) {
+             console.error(`Elementos da UI não encontrados para o agente ${agentId}. O card pode ter sido removido?`);
+             return;
+        }
+
+
+        let mainStatusText = 'Offline';
+        let mainStatusClass = 'bg-secondary';
+        let monitoringText = 'Não';
+
+        if (agentState.is_online_web) {
+            if (agentState.is_monitoring) {
+                mainStatusText = 'Ativo';
+                mainStatusClass = 'bg-success';
+                monitoringText = 'Sim';
+            } else {
+                // Se a web está online mas o desktop parou de enviar dados
+                mainStatusText = 'Online (Sem Monitoramento)';
+                mainStatusClass = 'bg-warning text-dark';
+                monitoringText = 'Não';
+            }
+        } else {
+            // Se a web está offline
+            mainStatusText = 'Offline';
+            mainStatusClass = 'bg-secondary';
+             // Mesmo offline da web, pode ter enviado dados do desktop recentemente
+            monitoringText = agentState.is_monitoring ? 'Sim (Web Offline)' : 'Não';
+        }
+
+        statusEl.textContent = mainStatusText;
+        statusEl.className = `badge ${mainStatusClass}`;
+        monitoringStatusEl.textContent = monitoringText;
+        lastActivityEl.textContent = formatTimeAgo(agentState.last_desktop_update_iso); // Usa ISO string
+
+        // Atualiza detalhes da atividade apenas se existirem no estado
+        activityEl.textContent = agentState.current_activity || '-';
+        processEl.textContent = agentState.current_process || '-';
+
+        categoryEl.textContent = agentState.current_category || 'Não Classificado';
+        let categoryClass = 'bg-secondary';
+        if (agentState.is_productive === true) categoryClass = 'bg-primary';
+        else if (agentState.is_productive === false) categoryClass = 'bg-danger';
+        categoryEl.className = `badge ${categoryClass}`;
+    }
+
+    // Inicializa ou atualiza o estado de um agente
+    function initializeOrUpdateAgentState(agentId, initialData = {}) {
+         if (!agentsData[agentId]) {
+            agentsData[agentId] = {
+                is_online_web: initialData.is_online_web !== undefined ? initialData.is_online_web : false,
+                is_monitoring: initialData.is_monitoring !== undefined ? initialData.is_monitoring : false,
+                last_desktop_update_iso: initialData.last_desktop_update_iso || null,
+                monitoring_timeout: null,
+                // Guarda a última atividade conhecida
+                current_activity: null,
+                current_process: null,
+                is_productive: null,
+                current_category: null,
+            };
+         } else {
+             // Atualiza apenas os campos fornecidos em initialData
+             if (initialData.is_online_web !== undefined) agentsData[agentId].is_online_web = initialData.is_online_web;
+             if (initialData.is_monitoring !== undefined) agentsData[agentId].is_monitoring = initialData.is_monitoring;
+             if (initialData.last_desktop_update_iso !== undefined) agentsData[agentId].last_desktop_update_iso = initialData.last_desktop_update_iso;
+         }
+         updateAgentCardUI(agentId); // Atualiza a UI após inicializar/atualizar o estado
+    }
+
+    // Inicializa estado para agentes já presentes na página
+    document.querySelectorAll('.agent-monitor-card').forEach(card => {
+        initializeOrUpdateAgentState(card.dataset.agentId);
+    });
+
+    // --- Ouve o status combinado do servidor ---
+    socket.on('agent_status_update', function(data) {
+        const agentId = data.agent_id;
+        console.log("Status Update Recebido:", data);
+        initializeOrUpdateAgentState(agentId, data); // Cria ou atualiza o estado com os dados recebidos
+
+        // Se o status indica que está monitorando, limpa/reinicia o timeout local
+        const agentState = agentsData[agentId];
+        if (agentState && agentState.is_monitoring) {
+            clearTimeout(agentState.monitoring_timeout);
+            agentState.monitoring_timeout = setTimeout(() => {
+                // Este timeout local marca como 'não monitorando' se NENHUM dado (nem status, nem activity) chegar por um tempo
+                if (agentsData[agentId]) { // Verifica se ainda existe
+                    agentsData[agentId].is_monitoring = false;
+                    console.log(`Timeout LOCAL: Agente ${agentId} marcado como SEM MONITORAMENTO.`);
+                    updateAgentCardUI(agentId);
+                }
+            }, MONITORING_TIMEOUT_SECONDS * 1000);
+        }
+    });
+
+
+    // --- Ouve as atualizações de atividade do desktop ---
+    socket.on('productivity_update', function(data) {
+        const agentId = data.usuario_id;
+        console.log("Activity Update Recebido:", data);
+        if (!agentsData[agentId]) {
+             initializeOrUpdateAgentState(agentId); // Cria o estado se for a primeira vez
+        }
+
+        const agentState = agentsData[agentId];
+        agentState.is_monitoring = true; // Recebeu dados, está monitorando
+        agentState.last_desktop_update_iso = new Date().toISOString(); // Atualiza a hora localmente
+
+        // Guarda os detalhes da atividade no estado
+        agentState.current_activity = data.url || data.window_title || '-';
+        agentState.current_process = data.process_name || '-';
+        agentState.is_productive = data.is_productive;
+        agentState.current_category = data.category || 'Não Classificado';
+
+
+        // Limpa o timer anterior e agenda um novo para marcar como não monitorando
+        clearTimeout(agentState.monitoring_timeout);
+        agentState.monitoring_timeout = setTimeout(() => {
+             if (agentsData[agentId]) { // Verifica se ainda existe
+                 agentsData[agentId].is_monitoring = false;
+                 console.log(`Timeout LOCAL (após activity): Agente ${agentId} marcado como SEM MONITORAMENTO.`);
+                 updateAgentCardUI(agentId);
+             }
+        }, MONITORING_TIMEOUT_SECONDS * 1000);
+
+        // Atualiza a UI com todos os dados (status + atividade)
+        updateAgentCardUI(agentId);
+    });
+
+    // Ouve adição de novos agentes
+    socket.on('new_agent_added', function(agent) {
+        console.log('Novo agente adicionado dinamicamente:', agent);
+        const noAgentsMessage = document.getElementById('no-agents-message');
+        if (noAgentsMessage) noAgentsMessage.remove();
+
+        // Verifica se o card já não existe (caso de reconexão rápida)
+        if (document.getElementById(`agent-card-${agent.id}`)) return;
+
         const cardHtml = `
         <div class="col-lg-4 col-md-6 mb-4">
             <div class="card h-100 agent-monitor-card" id="agent-card-${agent.id}" data-agent-id="${agent.id}">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h6 class="mb-0">${agent.nome}</h6>
-                    <span class="badge bg-secondary" id="agent-status-${agent.id}">Offline</span>
+                    <span class="badge bg-secondary" id="agent-status-${agent.id}">Carregando...</span>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted mb-2">
-                        <i class="fas fa-clock me-2"></i>Inativo há: 
-                        <strong id="agent-inactive-time-${agent.id}">00:00:00</strong>
-                    </p>
-                    <p class="mb-1">
-                        <i class="fas fa-window-maximize me-2"></i>
-                        <strong class="d-block">Atividade Atual:</strong>
-                        <span id="agent-activity-${agent.id}" class="text-truncate d-block">Nenhuma atividade registrada.</span>
-                    </p>
-                    <p class="mb-1">
-                        <i class="fas fa-cogs me-2"></i>
-                        <strong class="d-block">Software/Site:</strong>
-                        <span id="agent-process-${agent.id}">N/A</span>
-                    </p>
+                     <p class="text-muted mb-2"> <i class="fas fa-desktop me-1"></i> Monitorando: <strong id="agent-monitoring-status-${agent.id}">Não</strong> </p>
+                    <p class="text-muted mb-2"> <i class="fas fa-clock me-2"></i>Última Atividade: <strong id="agent-last-activity-${agent.id}">Nunca</strong> </p>
+                    <p class="mb-1"> <i class="fas fa-window-maximize me-2"></i> <strong class="d-block">Atividade Atual:</strong> <span id="agent-activity-${agent.id}" class="text-truncate d-block">-</span></p>
+                    <p class="mb-1"> <i class="fas fa-cogs me-2"></i> <strong class="d-block">Software/Site:</strong> <span id="agent-process-${agent.id}">-</span> </p>
                 </div>
                 <div class="card-footer d-flex justify-content-between align-items-center">
                     <span class="badge" id="agent-category-${agent.id}">Não Classificado</span>
-                    <a href="/productivity/agent/${agent.id}/log" class="btn btn-sm btn-outline-primary">
-                        Ver Histórico
-                    </a>
+                    <a href="/productivity/agent/${agent.id}/log" class="btn btn-sm btn-outline-primary">Ver Histórico</a>
                 </div>
             </div>
-        </div>
-        `;
+        </div>`;
         agentsGrid.insertAdjacentHTML('beforeend', cardHtml);
-
-        // Inicializa os dados para o novo agente
-        agentsData[agent.id] = {
-            lastUpdate: null,
-            inactiveSince: new Date(),
-            isInactive: true
-        };
-    }
-
-    // Inicializa os dados para cada agente no carregamento da página
-    document.querySelectorAll('.agent-monitor-card').forEach(card => {
-        const agentId = card.dataset.agentId;
-        agentsData[agentId] = {
-            lastUpdate: null,
-            inactiveSince: new Date(),
-            isInactive: true
-        };
+        initializeOrUpdateAgentState(agent.id); // Inicializa o estado para o novo agente
     });
 
-    // Um único timer global que atualiza a cada segundo
+    // Atualiza o 'tempo desde' periodicamente para todos os agentes visíveis
     setInterval(() => {
-        const now = new Date();
-        for (const agentId in agentsData) {
-            if (agentsData[agentId].isInactive) {
-                const diff = Math.floor((now - agentsData[agentId].inactiveSince) / 1000);
-                const h = String(Math.floor(diff / 3600)).padStart(2, '0');
-                const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
-                const s = String(diff % 60).padStart(2, '0');
-                const timeEl = document.getElementById(`agent-inactive-time-${agentId}`);
-                if (timeEl) {
-                    timeEl.textContent = `${h}:${m}:${s}`;
+        document.querySelectorAll('.agent-monitor-card').forEach(card => {
+             const agentId = card.dataset.agentId;
+             if (agentsData[agentId]) {
+                const lastActivityEl = document.getElementById(`agent-last-activity-${agentId}`);
+                if (lastActivityEl) {
+                    lastActivityEl.textContent = formatTimeAgo(agentsData[agentId].last_desktop_update_iso);
                 }
-            }
-        }
-    }, 1000);
+             }
+        });
+    }, 30 * 1000); // Atualiza a cada 30 segundos
 
     socket.on('connect', function() {
-        console.log('Conectado ao servidor de WebSocket.');
+        console.log('Conectado ao servidor WebSocket.');
+        // O backend agora deve enviar o status atual de todos os agentes da empresa
+        // ao admin conectar via evento 'agent_status_update'.
     });
 
-    // --- OUVINTE PARA O NOVO EVENTO ---
-    socket.on('new_agent_added', function(data) {
-        console.log('Novo agente adicionado:', data);
-        addAgentCard(data);
-    });
-
-    socket.on('productivity_update', function(data) {
-        const agentId = data.usuario_id;
-        if (!agentsData[agentId]) return;
-
-        const agent = agentsData[agentId];
-        agent.lastUpdate = new Date();
-
-        if (agent.isInactive) {
-            agent.isInactive = false;
-            document.getElementById(`agent-inactive-time-${agentId}`).textContent = '00:00:00';
-            const statusEl = document.getElementById(`agent-status-${agentId}`);
-            statusEl.textContent = 'Ativo';
-            statusEl.className = 'badge bg-success';
-        }
-
-        document.getElementById(`agent-activity-${agentId}`).textContent = data.url || data.window_title || 'N/A';
-        document.getElementById(`agent-process-${agentId}`).textContent = data.process_name || 'N/A';
-        
-        const categoryEl = document.getElementById(`agent-category-${agentId}`);
-        categoryEl.textContent = data.category || 'Não Classificado';
-        
-        let categoryClass = 'bg-secondary';
-        if (data.is_productive === true) categoryClass = 'bg-primary';
-        else if (data.is_productive === false) categoryClass = 'bg-danger';
-        categoryEl.className = `badge ${categoryClass}`;
-
-        clearTimeout(agent.inactiveTimeout);
-        agent.inactiveTimeout = setTimeout(() => {
-            agent.isInactive = true;
-            agent.inactiveSince = new Date();
-            const statusEl = document.getElementById(`agent-status-${agentId}`);
-            statusEl.textContent = 'Inativo';
-            statusEl.className = 'badge bg-warning text-dark';
-        }, 30 * 1000);
-    });
 });
 </script>
 {% endblock %}

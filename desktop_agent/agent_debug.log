@@ -1,0 +1,9 @@
+2025-10-20 11:14:48,324 - Imported existing <module 'comtypes.gen' from 'C:\\Users\\arthur_armando\\Documents\\GitHub\\call_center_project\\venv\\lib\\site-packages\\comtypes\\gen\\__init__.py'>
+2025-10-20 11:14:48,324 - Using writeable comtypes cache directory: 'C:\Users\arthur_armando\Documents\GitHub\call_center_project\venv\lib\site-packages\comtypes\gen'
+2025-10-20 11:14:48,331 - --- Agente de Monitoramento Iniciado ---
+2025-10-20 11:14:48,340 - Configuração carregada: API_KEY=tutifofo10@gmail.com
+2025-10-20 11:14:48,340 - Argumentos recebidos: ['main.py']
+2025-10-20 11:14:48,341 - Nenhum argumento de token encontrado.
+2025-10-20 11:14:48,341 - Iniciando loop de monitoramento para o agente: tutifofo10@gmail.com
+2025-10-20 11:21:55,184 - Erro de conexão ao enviar log: HTTPConnectionPool(host='127.0.0.1', port=5000): Read timed out. (read timeout=10)
+2025-10-20 11:45:45,208 - Agente encerrado pelo usuário (Ctrl+C).
