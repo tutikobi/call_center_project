@@ -55,6 +55,12 @@ def novo_usuario():
         role = request.form.get('role', 'agente')
         departamento_id = request.form.get('departamento_id')
         
+        # --- [INÍCIO DA NOVA ATUALIZAÇÃO] ---
+        # Pega o valor do checkbox de acesso ao RH. 
+        # request.form.get('has_rh_access') retornará 'true' se marcado, ou None se desmarcado/ausente.
+        has_rh_access = request.form.get('has_rh_access') == 'true'
+        # --- [FIM DA NOVA ATUALIZAÇÃO] ---
+        
         if not all([nome, email, senha, whatsapp]):
             flash('Todos os campos são obrigatórios.', 'warning')
             return render_template('management/form_usuario.html', page_title="Novo Usuário", form_data=request.form)
@@ -69,7 +75,8 @@ def novo_usuario():
             whatsapp_numero=whatsapp, 
             role=role, 
             empresa_id=current_user.empresa_id,
-            departamento_id=int(departamento_id) if departamento_id else None
+            departamento_id=int(departamento_id) if departamento_id else None,
+            has_rh_access=has_rh_access # [ATUALIZADO] Salva a nova permissão
         )
         novo_usuario.set_password(senha)
         db.session.add(novo_usuario)
@@ -102,6 +109,11 @@ def editar_usuario(id):
         usuario.role = request.form.get('role')
         departamento_id = request.form.get('departamento_id')
         usuario.departamento_id = int(departamento_id) if departamento_id else None
+
+        # --- [INÍCIO DA NOVA ATUALIZAÇÃO] ---
+        # Atualiza a permissão de acesso ao RH
+        usuario.has_rh_access = request.form.get('has_rh_access') == 'true'
+        # --- [FIM DA NOVA ATUALIZAÇÃO] ---
 
         if current_user.role != 'super_admin':
             if usuario.email != request.form.get('email') or usuario.whatsapp_numero != request.form.get('whatsapp_numero'):

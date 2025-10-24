@@ -38,6 +38,38 @@ def require_plan(plan_level):
         return decorated_function
     return decorator
 
+# --- [INÍCIO DA NOVA ATUALIZAÇÃO] ---
+def rh_access_required(f):
+    """
+    Decorador que restringe o acesso ao módulo RH.
+    Permite acesso se o plano da empresa incluir RH E
+    se o usuário for 'admin_empresa' OU tiver 'has_rh_access' = True.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth.login'))
+        
+        # 1. Super admin sempre tem acesso
+        if current_user.role == 'super_admin':
+            return f(*args, **kwargs)
+
+        # 2. Verifica se o plano da empresa contempla o RH
+        # Usamos 'plano_rh' que é um booleano no modelo Empresa
+        if not current_user.empresa.plano_rh:
+            flash('O módulo RH não está habilitado no plano da sua empresa.', 'warning')
+            return redirect(url_for('routes.dashboard'))
+
+        # 3. Verifica se o usuário tem permissão individual (admin ou flag)
+        if current_user.role == 'admin_empresa' or current_user.has_rh_access:
+            return f(*args, **kwargs) # Acesso permitido!
+        
+        # 4. Se chegou até aqui, nega o acesso
+        flash('Você não tem permissão para acessar o módulo RH.', 'danger')
+        return redirect(url_for('routes.dashboard'))
+    return decorated_function
+# --- [FIM DA NOVA ATUALIZAÇÃO] ---
+
 def agent_api_key_required(f):
     """Valida a chave de API enviada pelo agente de desktop."""
     @wraps(f)

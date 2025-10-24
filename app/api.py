@@ -266,15 +266,22 @@ def dados_produtividade():
 
         top_assuntos = [{"assunto": a.assunto, "total": a.total} for a in top_assuntos_query]
         
+        # --- [CORREÇÃO MANTIDA] ---
+        # A lógica de "Ativo" vs "Inativo" foi removida desta rota.
+        # Agora, nós simplesmente lemos os valores 'status_agente' e 'is_monitoring'
+        # que são mantidos no banco de dados pela rota /log_activity (para online)
+        # e pelo realtime_service (para offline).
         agentes.append({
             "id": agente.id,
             "nome": agente.nome,
             "setor": agente.departamento.nome if agente.departamento else "Sem Setor",
             "atendimentos": atendimentos_hoje,
             "tma": f"{agente_tma_min:02d}:{agente_tma_sec:02d}",
-            "status": agente.status_agente,
+            "status": agente.status_agente, # Apenas lemos o status do banco
+            "is_monitoring": agente.is_monitoring, # Apenas lemos o status do banco
             "top_assuntos": top_assuntos
         })
+        # --- [FIM DA CORREÇÃO] ---
     
     return jsonify({
         "totalAtendimentos": total_atendimentos,
@@ -325,7 +332,10 @@ def dados_dashboard_financeiro():
         "total_salarios_liquidos": round(float(salarios_liquidos), 2),
         "total_beneficios": round(float(beneficios), 2),
         "total_impostos": round(float(impostos), 2),
+        # --- [INÍCIO DA CORREÇÃO DO SYNTAXERROR] ---
+        # O espaço foi removido daqui:
         "distribuicao_custos": distribuicao_custos
+        # --- [FIM DA CORREÇÃO DO SYNTAXERROR] ---
     })
 
 
@@ -387,6 +397,17 @@ def log_activity():
         ai_analysis=analysis
     )
     db.session.add(new_log)
+    
+    # --- [LÓGICA CORRETA MANTIDA] ---
+    # Atualiza o status do usuário para "Ativo" e "Monitorando"
+    # e registra o último "ping"
+    agent_user.is_monitoring = True
+    agent_user.last_agent_activity = datetime.utcnow()
+    # Se o status manual dele era 'Inativo', muda para 'Disponível'
+    if agent_user.status_agente == 'Inativo':
+        agent_user.status_agente = 'Disponível'
+    # --- [FIM DA LÓGICA MANTIDA] ---
+
     db.session.commit()
     
     realtime_data = {
@@ -398,6 +419,7 @@ def log_activity():
     notify_dashboard_update(agent_user.empresa_id, realtime_data)
     
     # Notifica sobre o STATUS (confirma que o desktop está enviando dados)
+    # Isso fará o dashboard web atualizar
     update_desktop_agent_status(agent_user.id, True)
 
     return jsonify({"status": "success", "message": "Log recebido."}), 201

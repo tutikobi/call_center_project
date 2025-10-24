@@ -113,6 +113,16 @@ class Usuario(UserMixin, BaseModel):
     desktop_login_token = db.Column(db.String(64), unique=True, nullable=True)
     desktop_token_expiration = db.Column(db.DateTime, nullable=True)
     
+    # --- [CAMPO ADICIONADO NA ETAPA ANTERIOR - NÃO REMOVA] ---
+    # (Supondo que você os adicionou na etapa anterior)
+    last_agent_activity = db.Column(db.DateTime, nullable=True)
+    is_monitoring = db.Column(db.Boolean, default=False)
+    
+    # --- [INÍCIO DA NOVA ATUALIZAÇÃO] ---
+    # Adiciona a coluna de permissão de acesso ao RH
+    has_rh_access = db.Column(db.Boolean, default=False)
+    # --- [FIM DA NOVA ATUALIZAÇÃO] ---
+
     avaliacoes = db.relationship('Avaliacao', backref='agente', lazy=True)
     conversas_atribuidas = db.relationship('ConversaWhatsApp', backref='agente_atribuido', lazy=True, foreign_keys='ConversaWhatsApp.agente_atribuido_id')
     emails = db.relationship('Email', backref='agente', lazy=True)
