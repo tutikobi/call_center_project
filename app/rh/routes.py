@@ -15,7 +15,6 @@ from io import BytesIO
 import json
 
 rh = Blueprint('rh', __name__, url_prefix='/rh')
-
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf', 'xlsx'}
     return '.' in filename and \
