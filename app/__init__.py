@@ -62,7 +62,7 @@ def create_app():
     # Registra todos os Blueprints (rotas)
     from . import routes, auth, api, admin, management, socket_events
     from .rh import routes as rh_routes
-    #app.register_blueprint(rh_routes.bp)
+    app.register_blueprint(routes.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(api.bp)
     app.register_blueprint(admin.bp)
