@@ -9,8 +9,9 @@ from app.models_rh import Funcionario, Cargo, Departamento, DocumentoFuncionario
 # Importa o novo decorador no lugar do 'require_plan'
 from app.decorators import rh_access_required
 # --- [FIM DA NOVA ATUALIZAÇÃO] ---
-from .validators import is_cpf_valid
-from .calculos import calcular_rescisao, calcular_folha_pagamento, _get_dias_uteis_no_mes
+# Linha 12 (Nova)
+from .rh.validators import is_cpf_valid
+from .rh.calculos import calcular_rescisao, calcular_folha_pagamento, _get_dias_uteis_no_mes
 import os
 from werkzeug.utils import secure_filename
 import openpyxl

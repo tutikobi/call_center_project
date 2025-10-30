@@ -6,7 +6,7 @@
     <title>{% block title %}Sistema Call Center{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css'  ) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css'   ) }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
@@ -14,27 +14,15 @@
     <div class="sidebar">
         <h5 class="sidebar-title">{{ current_user.empresa.nome_empresa }}</h5>
         <nav class="nav flex-column">
-            <a class="nav-link {% if request.endpoint == 'routes.dashboard' or request.endpoint == 'admin.dashboard' %}active{% endif %}"
-               href="{{ url_for('admin.dashboard') if current_user.role == 'super_admin' else url_for('routes.dashboard') }}">
+            
+            <a class="nav-link {% if request.endpoint == 'rh.dashboard' or request.endpoint == 'admin.dashboard' %}active{% endif %}"
+               href="{{ url_for('admin.dashboard') if current_user.role == 'super_admin' else url_for('rh.dashboard') }}">
                 <i class="fas fa-tachometer-alt fa-fw me-2"></i> Dashboard
             </a>
+            
             {% if current_user.role != 'super_admin' %}
-                <a class="nav-link {% if request.endpoint == 'routes.whatsapp_dashboard' %}active{% endif %}" href="{{ url_for('routes.whatsapp_dashboard') }}">
-                    <i class="fas fa-chart-line fa-fw me-2"></i> Produtividade
-                </a>
-                <a class="nav-link {% if request.endpoint == 'routes.conversas' %}active{% endif %}" href="{{ url_for('routes.conversas') }}">
-                    <i class="fas fa-comments fa-fw me-2"></i> Conversas WhatsApp
-                </a>
-                <a class="nav-link {% if request.endpoint == 'routes.emails' or request.endpoint == 'routes.caixa_email_agente' %}active{% endif %}" href="{{ url_for('routes.emails') }}">
-                    <i class="fas fa-envelope fa-fw me-2"></i> Emails
-                </a>
-                <a class="nav-link {% if request.endpoint == 'routes.avaliar' %}active{% endif %}" href="{{ url_for('routes.avaliar') }}">
-                    <i class="fas fa-star fa-fw me-2"></i> Avaliação
-                </a>
-                <a class="nav-link {% if request.endpoint == 'routes.relatorios' %}active{% endif %}" href="{{ url_for('routes.relatorios' ) }}">
-                    <i class="fas fa-chart-bar fa-fw me-2"></i> Relatórios
-                </a>
-            {% endif %}
+                
+                {% endif %}
 
             {% if current_user.is_authenticated and current_user.empresa.plano_rh and (current_user.role == 'admin_empresa' or current_user.has_rh_access) %}
                 <hr class="sidebar-divider">
@@ -42,11 +30,10 @@
                     <i class="fas fa-users-cog fa-fw me-2"></i> RH
                 </a>
             {% endif %}
+            
             {% if current_user.role == 'admin_empresa' %}
                 <hr class="sidebar-divider">
-                <a class="nav-link {% if request.endpoint == 'routes.productivity_monitoring' %}active{% endif %}" href="{{ url_for('routes.productivity_monitoring') }}">
-                    <i class="fas fa-desktop fa-fw me-2"></i> Monitoramento
-                </a>
+                
                 <a class="nav-link {% if request.endpoint.startswith('management.') and 'configuracoes' not in request.endpoint %}active{% endif %}" href="{{ url_for('management.listar_usuarios') }}">
                     <i class="fas fa-users-cog fa-fw me-2"></i> Gerenciar Usuários
                 </a>
@@ -191,11 +178,11 @@
             let selectedTopic = '';
             let problemDescription = '';
             const initialBotMessage = `Olá! Sou seu assistente de suporte. Como posso ajudar hoje?<br><br>
-                                <b>1</b> - Suporte Técnico<br>
-                                <b>2</b> - Problemas com Fatura<br>
-                                <b>3</b> - Tirar Dúvidas<br>
-                                <b>4</b> - Problemas no Dashboard<br>
-                                <b>5</b> - Problemas no WhatsApp ou Email`;
+                                        <b>1</b> - Suporte Técnico<br>
+                                        <b>2</b> - Problemas com Fatura<br>
+                                        <b>3</b> - Tirar Dúvidas<br>
+                                        <b>4</b> - Problemas no Dashboard<br>
+                                        <b>5</b> - Problemas no WhatsApp ou Email`;
             const topics = { '1': 'Suporte Técnico', '2': 'Problemas com Fatura', '3': 'Tirar Dúvidas', '4': 'Problemas no Dashboard', '5': 'Problemas no WhatsApp ou Email' };
             
             function resetChat() {

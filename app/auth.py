@@ -10,8 +10,10 @@ bp = Blueprint('auth', __name__)
 def login():
     if current_user.is_authenticated:
         if current_user.role == 'super_admin':
-            return redirect(url_for('admin.dashboard'))
-        return redirect(url_for('routes.dashboard'))
+            # O super_admin logado deve ser redirecionado para o dashboard de admin
+            return redirect(url_for('admin.dashboard')) 
+        # Outros utilizadores logados vão para o dashboard de RH
+        return redirect(url_for('rh.dashboard')) # <-- ALTERADO DE 'routes.dashboard'
     
     if request.method == 'POST':
         email = request.form.get('email')
@@ -25,9 +27,11 @@ def login():
         login_user(user, remember=True)
         
         if user.role == 'super_admin':
+            # Após o login, o super_admin vai para o dashboard de admin
             return redirect(url_for('admin.dashboard'))
         else:
-            return redirect(url_for('routes.dashboard'))
+            # Outros utilizadores vão para o dashboard de RH
+            return redirect(url_for('rh.dashboard')) # <-- ALTERADO DE 'routes.dashboard'
         
     return render_template('auth/login.html')
 

@@ -1,5 +1,5 @@
 # call_center_project/app/services/realtime_service.py
-from app import socketio, create_app
+from app import socketio
 from app.models import db, Usuario
 from datetime import datetime, timedelta
 import time
@@ -19,7 +19,14 @@ def check_inactive_agents():
     Função que roda em loop para verificar agentes inativos.
     Esta função precisa ser executada dentro do contexto da aplicação Flask.
     """
+    
+    # --- [CORREÇÃO DO NameError APLICADA AQUI] ---
+    # Importamos o create_app aqui dentro da função,
+    # para evitar o erro de importação circular.
+    from app import create_app
     app = create_app()  # Cria uma instância da app para ter o contexto
+    # --- [FIM DA CORREÇÃO] ---
+    
     with app.app_context():
         current_app.logger.info("Iniciando thread de verificação de agentes inativos...")
         while True:
